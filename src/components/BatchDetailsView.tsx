@@ -1,7 +1,8 @@
 import React, { useState, useMemo, useEffect, useRef } from "react";
 import { resolveNamesOrIdsToIds, isBatchRunning, formatToMmmDdYyyy, parseWorkflowAndStages, getStageAssignment, cn, serializeWorkflowAndStages, parseWorkflowTitle, getPhotoUrl } from "../lib/utils";
-import { Users, Calendar, Info, Briefcase, FileText, Plus, Clock, Save, Check, ExternalLink, Trash2, Edit3, X, Search, ChevronDown, Video, Building2, DollarSign, TrendingUp, Percent, Coins, TrendingDown, Wallet, Banknote, Upload, GitMerge, BookOpen, Eye, Loader2, Lock, Tag } from "lucide-react";
+import { Users, Calendar, Info, Briefcase, FileText, Plus, Clock, Save, Check, ExternalLink, Trash2, Edit3, X, Search, ChevronDown, Video, Building2, DollarSign, TrendingUp, Percent, Coins, TrendingDown, Wallet, Banknote, Upload, GitMerge, BookOpen, Eye, Loader2, Lock, Tag, Smartphone, Mail } from "lucide-react";
 import axios from "axios";
+import { parseAlignedCourses } from "./AlignedCourseTable";
 import { FOLDER_LOCATIONS } from "../FolderLocation";
 import EmployeeMultiSelect from "./EmployeeMultiSelect";
 import WorkflowTimeline from "./WorkflowTimeline";
@@ -788,6 +789,82 @@ export default function BatchDetailsView({
     });
   };
   
+  const departmentalCourseData = useMemo(() => {
+    try {
+      const saved = localStorage.getItem("departmental_course_data");
+      return saved ? JSON.parse(saved) : [];
+    } catch (e) {
+      return [];
+    }
+  }, []);
+
+  const courseOfferData = useMemo(() => {
+    try {
+      const saved = localStorage.getItem("course_offer_data");
+      return saved ? JSON.parse(saved) : [];
+    } catch (e) {
+      return [];
+    }
+  }, []);
+
+  const alignedCourseOffers = useMemo(() => {
+    const alignedValue = batch?.["Aligned Course name"] || batch?.["Aligned Course"] || parentCourse?.["Aligned Course name"] || parentCourse?.["Aligned Course"] || "";
+    if (!alignedValue) return [];
+
+    const parsedCourses = parseAlignedCourses(alignedValue, departmentalCourseData);
+    if (!parsedCourses || parsedCourses.length === 0) return [];
+
+    return parsedCourses.map((course) => {
+      const code = String(course.courseCode || "").trim().toLowerCase();
+      const title = String(course.courseTitle || "").trim().toLowerCase();
+
+      const matchingOffers = courseOfferData.filter((offer) => {
+        const offerCode = String(offer["Course Code"] || offer["course code"] || "").trim().toLowerCase();
+        const offerTitle = String(offer["Course Title"] || offer["course title"] || "").trim().toLowerCase();
+        
+        if (code && offerCode && code === offerCode) return true;
+        if (title && offerTitle && title === offerTitle) return true;
+        return false;
+      }).map((offer) => {
+        const empName = String(offer["Employee Name"] || offer["employee name"] || offer["Teacher Name"] || offer["Instructor"] || offer["Instractor"] || "Unassigned").trim();
+        const empDesignation = String(offer["Designation"] || offer["designation"] || "Faculty").trim();
+        const sectionName = String(offer["Section"] || offer["section"] || offer["Section ID"] || offer["Sec"] || "—").trim();
+        
+        const empDetails = (employees || []).find((e) => {
+          const eName = String(e["Employee Name"] || e["Name"] || "").trim().toLowerCase();
+          return eName && eName === empName.toLowerCase();
+        });
+
+        const email = empDetails
+          ? (empDetails["Email"] || empDetails["email"] || empDetails["E-mail"] || empDetails["e-mail"] || "")
+          : (offer["Email"] || offer["email"] || "");
+
+        const mobileKey = empDetails ? Object.keys(empDetails).find(k => k.toLowerCase() === "mobile" || k.toLowerCase().includes("mobile")) : undefined;
+        const mobile = empDetails && mobileKey
+          ? String(empDetails[mobileKey] || "")
+          : String(offer["Mobile"] || offer["mobile"] || offer["Phone"] || offer["phone"] || "");
+
+        return {
+          employeeName: empName,
+          designation: empDesignation,
+          sectionName,
+          email,
+          mobile,
+          empDetails,
+          rawOffer: offer
+        };
+      });
+
+      return {
+        courseCode: course.courseCode || "—",
+        courseTitle: course.courseTitle || "—",
+        credit: course.credit || "—",
+        pId: course.pId || "—",
+        offers: matchingOffers
+      };
+    });
+  }, [batch, parentCourse, departmentalCourseData, courseOfferData, employees]);
+
   const instructorsToRender = getInstructorList();
   
   const renderWorkflow = () => {
@@ -2217,6 +2294,113 @@ export default function BatchDetailsView({
                   ) : (
                     <div className="text-center py-2">
                       <span className="text-xs italic text-slate-400">No instructor assigned</span>
+                    </div>
+                  )}
+                </div>
+
+                {/* Aligned Departmental Courses & Sections Card */}
+                <div className="relative border border-slate-200 bg-white rounded-lg p-3.5 pt-5 text-left">
+                  <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-white px-2.5 py-0.5 border border-slate-200 rounded-full flex items-center gap-1.5 text-slate-600 shadow-2xs z-10">
+                    <BookOpen className="w-3.5 h-3.5 text-teal-600 shrink-0" />
+                    <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-700 whitespace-nowrap">
+                      Aligned Departmental Courses
+                    </span>
+                  </div>
+
+                  {alignedCourseOffers.length > 0 ? (
+                    <div className="space-y-4">
+                      {alignedCourseOffers.map((course, idx) => (
+                        <div key={idx} className="border border-slate-100 rounded-lg p-3 bg-slate-50/40">
+                          {/* Course Title and Code Header */}
+                          <div className="flex items-center justify-between border-b border-slate-100 pb-2 mb-3 flex-wrap gap-2">
+                            <div className="flex items-center gap-1.5 min-w-0">
+                              <span className="text-xs font-bold text-slate-800 truncate uppercase tracking-wide">
+                                {course.courseTitle}
+                              </span>
+                              <span className="px-1.5 py-0.5 bg-slate-200/80 text-slate-700 text-[9px] font-mono font-bold rounded uppercase shrink-0">
+                                {course.courseCode}
+                              </span>
+                            </div>
+                            {course.credit && course.credit !== "—" && (
+                              <span className="text-[10px] font-extrabold uppercase text-teal-600 bg-teal-50 px-2 py-0.5 rounded-full border border-teal-100">
+                                {course.credit} Credits
+                              </span>
+                            )}
+                          </div>
+
+                          {/* Sections and Instructors list */}
+                          {course.offers.length > 0 ? (
+                            <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-2.5">
+                              {course.offers.map((offer, offerIdx) => (
+                                <div key={offerIdx} className="flex flex-col gap-2 bg-white p-3 rounded-lg border border-slate-200/70 hover:border-teal-300 transition-all shadow-3xs">
+                                  {/* Row 1: Avatar, Name, Designation */}
+                                  <div className="flex items-start gap-2.5">
+                                    {/* Instructor Photo / Avatar */}
+                                    <div className="w-10 h-10 rounded-full bg-white overflow-hidden shrink-0 border border-slate-200 shadow-3xs">
+                                      <img
+                                        src={offer.empDetails ? getPhotoUrl(offer.empDetails) : `https://ui-avatars.com/api/?name=${encodeURIComponent(offer.employeeName)}&background=0D9488&color=fff`}
+                                        alt={offer.employeeName}
+                                        referrerPolicy="no-referrer"
+                                        className="w-full h-full object-cover"
+                                        onError={(e) => {
+                                          const target = e.target as HTMLImageElement;
+                                          target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(offer.employeeName)}&background=0D9488&color=fff`;
+                                        }}
+                                      />
+                                    </div>
+                                    {/* Name and Designation */}
+                                    <div className="min-w-0 flex-1 flex flex-col">
+                                      <span className="text-xs font-bold text-slate-800 truncate" title={offer.employeeName}>
+                                        {offer.employeeName}
+                                      </span>
+                                      <span className="text-[10px] font-medium text-slate-500 mt-0.5 truncate" title={offer.designation}>
+                                        {offer.designation}
+                                      </span>
+                                    </div>
+                                  </div>
+
+                                  {/* Row 2: Divider, Contact & Section Information */}
+                                  <div className="border-t border-slate-100/80 pt-2 mt-1 space-y-1 text-left">
+                                    {/* Mobile & Section Row aligned directly on the same line */}
+                                    <div className="flex items-center justify-between gap-2.5">
+                                      {offer.mobile ? (
+                                        <div className="flex items-center gap-1.5 text-slate-500 hover:text-slate-800 transition-colors min-w-0">
+                                          <Smartphone className="w-3 h-3 text-teal-600/80 shrink-0" />
+                                          <span className="text-[10px] font-semibold truncate font-mono select-all">
+                                            {offer.mobile}
+                                          </span>
+                                        </div>
+                                      ) : (
+                                        <div className="text-[10px] text-slate-400 italic">No mobile</div>
+                                      )}
+                                      <span className="px-1.5 py-0.5 bg-teal-500 text-white text-[8px] font-extrabold uppercase tracking-wider rounded font-mono shrink-0" title={`Section ${offer.sectionName}`}>
+                                        {offer.sectionName}
+                                      </span>
+                                    </div>
+
+                                    {offer.email && (
+                                      <div className="flex items-center gap-1.5 text-slate-500 hover:text-slate-800 transition-colors">
+                                        <Mail className="w-3 h-3 text-teal-600/80 shrink-0" />
+                                        <span className="text-[10px] font-semibold truncate select-all" title={offer.email}>
+                                          {offer.email}
+                                        </span>
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          ) : (
+                            <div className="text-center py-2.5 bg-white rounded-lg border border-slate-100">
+                              <span className="text-[11px] italic text-slate-400">No sections offered or assigned for this course.</span>
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-center py-4 bg-slate-50/50 rounded-lg border border-dashed border-slate-200">
+                      <span className="text-xs italic text-slate-400">No aligned departmental courses found for this batch.</span>
                     </div>
                   )}
                 </div>
