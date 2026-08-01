@@ -226,7 +226,7 @@ app.get("/api/data", handleData);
 app.post("/api/sync-all", async (req, res) => {
   const gids = req.body.gids || [
     "0", "1972051572", "1120624852", "1111164355", 
-    "880522927", "732376789", "1007542549", "1686458334"
+    "880522927", "732376789", "1007542549", "1686458334", "84557637", "1267393244"
   ];
   const customSpreadsheetId = req.headers["x-spreadsheet-id"] as string;
   const customAppsScriptUrl = req.headers["x-apps-script-url"] as string;

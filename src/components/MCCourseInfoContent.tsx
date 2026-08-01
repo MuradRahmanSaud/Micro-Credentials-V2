@@ -999,7 +999,7 @@ export const MCCourseInfoContent: React.FC<MCCourseInfoContentProps> = ({
                   handleInputChange("Aligned Course", val);
                 }}
                 isEditing={false}
-                courseOfferData={extraFormProps?.courseOfferData || []}
+                courseOfferData={extraFormProps?.departmentalCourseData || []}
                 programData={extraFormProps?.programNameData || []}
                 employees={(employees && employees.length > 0) ? employees : (extraFormProps?.employees || [])}
               />
@@ -1187,7 +1187,7 @@ export const MCCourseInfoContent: React.FC<MCCourseInfoContentProps> = ({
               handleInputChange("Aligned Course", val);
             }}
             isEditing={true}
-            courseOfferData={extraFormProps?.courseOfferData || []}
+            courseOfferData={extraFormProps?.departmentalCourseData || []}
             programData={extraFormProps?.programNameData || []}
             employees={(employees && employees.length > 0) ? employees : (extraFormProps?.employees || [])}
           />

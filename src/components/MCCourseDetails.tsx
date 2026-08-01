@@ -107,6 +107,8 @@ interface MCCourseDetailsProps {
     programNameHeaders?: string[];
     courseOfferData?: any[];
     courseOfferHeaders?: string[];
+    departmentalCourseData?: any[];
+    departmentalCourseHeaders?: string[];
     onViewFile?: (url: string, title: string, doc?: any) => void;
     allCourses?: any[];
     onSelectCourse?: (course: any) => void;

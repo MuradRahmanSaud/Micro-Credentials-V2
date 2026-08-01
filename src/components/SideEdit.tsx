@@ -918,7 +918,7 @@ export default function SideEdit({
                             handleChange("Aligned Course", val);
                           }}
                           isEditing={true}
-                          courseOfferData={extraFormProps?.courseOfferData || []}
+                          courseOfferData={extraFormProps?.departmentalCourseData || []}
                           programData={programNameData || extraFormProps?.programNameData || []}
                           employees={employees.length > 0 ? employees : (extraFormProps?.employees || [])}
                         />

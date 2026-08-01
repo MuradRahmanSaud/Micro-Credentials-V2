@@ -20,9 +20,10 @@ import ExpensesPanel from "./components/ExpensesPanel";
 import WorkflowView from "./components/WorkflowView";
 import ProgramNamePanel from "./components/ProgramNamePanel";
 import CourseOfferPanel from "./components/CourseOfferPanel";
+import DepartmentalCoursePanel from "./components/DepartmentalCoursePanel";
 import axios from "axios";
 import { motion, AnimatePresence } from "motion/react";
-import { UserCheck, Eye, BookOpen, Layers, X, Briefcase, FileText, GitMerge, Activity, Users, Coins, CalendarDays, GraduationCap, Upload, Loader2, BookOpenCheck, LayoutDashboard, Search, TrendingUp, Percent } from "lucide-react";
+import { UserCheck, Eye, BookOpen, Layers, X, Briefcase, FileText, GitMerge, Activity, Users, Coins, CalendarDays, GraduationCap, Upload, Loader2, BookOpenCheck, BookMarked, LayoutDashboard, Search, TrendingUp, Percent } from "lucide-react";
 import { ResponsiveContainer, PieChart, Pie, Cell, Tooltip, BarChart, Bar, XAxis, YAxis } from "recharts";
 import { FOLDER_LOCATIONS } from "./FolderLocation";
 import { useGoogleSheet } from "./hooks/useGoogleSheet";
@@ -490,6 +491,26 @@ export default function App() {
     ]
   });
 
+  // Departmental Course Sheet
+  const {
+    data: departmentalCourseData,
+    setData: setDepartmentalCourseData,
+    headers: departmentalCourseHeaders,
+    isLoading: isDepartmentalCourseLoading,
+    fetchData: fetchDepartmentalCourseData,
+    saveRow: saveDepartmentalCourse,
+    deleteRow: deleteDepartmentalCourseRaw
+  } = useGoogleSheet({
+    gid: "1267393244",
+    localStorageKey: "departmental_course_data",
+    fallbackHeaders: [
+      "P-ID",
+      "Course Code",
+      "Course Title",
+      "Credit"
+    ]
+  });
+
   // Keep state GIDs in sync when settingsData updates
   useEffect(() => {
     if (settingsData && Array.isArray(settingsData)) {
@@ -954,7 +975,8 @@ export default function App() {
         expensesGid, 
         "1686458334",
         "84557637",
-        courseOfferGid
+        courseOfferGid,
+        "1267393244"
       ];
       const headers = getDbOverridesHeaders();
       const response = await axios.post("/api/sync-all", { gids }, { headers });
@@ -1000,6 +1022,10 @@ export default function App() {
           setCourseOfferData(results[courseOfferGid]);
           localStorage.setItem("course_offer_data", JSON.stringify(results[courseOfferGid]));
         }
+        if (results["1267393244"]) {
+          setDepartmentalCourseData(results["1267393244"]);
+          localStorage.setItem("departmental_course_data", JSON.stringify(results["1267393244"]));
+        }
       }
     } catch (error) {
       console.error("Sync all failed, falling back to individual fetch:", error);
@@ -1012,7 +1038,8 @@ export default function App() {
         fetchExpensesData(true),
         fetchWorkflowData(true),
         fetchProgramNameData(true),
-        fetchCourseOfferData(true)
+        fetchCourseOfferData(true),
+        fetchDepartmentalCourseData(true)
       ]);
     } finally {
       setIsSyncing(false);
@@ -1285,6 +1312,22 @@ export default function App() {
       return cleaned === "sl" || cleaned === "section id" || cleaned === "course code" || cleaned === "p-id";
     }) || "Sl";
     await deleteCourseOfferRaw(row, idKey);
+  };
+
+  const handleDepartmentalCourseSave = async (formData: any, editingRow: any | null) => {
+    const idKey = departmentalCourseHeaders.find(h => {
+      const cleaned = h.toLowerCase().trim();
+      return cleaned === "course code" || cleaned === "p-id" || cleaned === "course title";
+    }) || "Course Code";
+    await saveDepartmentalCourse(formData, editingRow, idKey);
+  };
+
+  const handleDepartmentalCourseDelete = async (row: any) => {
+    const idKey = departmentalCourseHeaders.find(h => {
+      const cleaned = h.toLowerCase().trim();
+      return cleaned === "course code" || cleaned === "p-id" || cleaned === "course title";
+    }) || "Course Code";
+    await deleteDepartmentalCourseRaw(row, idKey);
   };
 
   const renderDocumentActions = (row: any) => {
@@ -1593,6 +1636,23 @@ export default function App() {
                           <BookOpenCheck className="w-3.5 h-3.5" />
                           <span className={mcSubTab === "course_offer" ? "text-teal-800" : ""}>Course Offer</span>
                         </button>
+                        <button
+                          onClick={() => {
+                            setMcSubTab("departmental_course");
+                            setIsCourseDetailsOpen(false);
+                          }}
+                          className="relative flex shrink-0 items-center gap-1.5 px-3 py-1.5 rounded-md text-[10px] font-bold uppercase tracking-wider cursor-pointer text-gray-500 hover:text-gray-800 transition-colors duration-200 select-none"
+                        >
+                          {mcSubTab === "departmental_course" && (
+                            <motion.span
+                              layoutId="activeSubTab"
+                              className="absolute inset-0 bg-white rounded-md shadow-sm border border-gray-100 -z-10"
+                              transition={{ type: "spring", stiffness: 220, damping: 26 }}
+                            />
+                          )}
+                          <BookMarked className="w-3.5 h-3.5" />
+                          <span className={mcSubTab === "departmental_course" ? "text-teal-800" : ""}>Departmental Course</span>
+                        </button>
                       </div>
                     </div>
 
@@ -1778,6 +1838,8 @@ export default function App() {
                                     programNameData: programNameData,
                                     programNameHeaders: programNameHeaders,
                                     courseOfferData: courseOfferData,
+                                     departmentalCourseData: departmentalCourseData,
+                                     departmentalCourseHeaders: departmentalCourseHeaders,
                                     courseOfferHeaders: courseOfferHeaders,
                                     allCourses: courseData,
                                     onSelectCourse: (course) => setSelectedCourse(course)
@@ -1957,6 +2019,20 @@ export default function App() {
                                 FormPanel={CourseOfferPanel}
                                 entityName="Course Offer"
                                 title="Course Offer List"
+                              />
+                            </div>
+                          ) : mcSubTab === "departmental_course" ? (
+                            <div className="flex-1 overflow-hidden relative">
+                              <Table 
+                                data={departmentalCourseData}
+                                headers={departmentalCourseHeaders}
+                                isLoading={isDepartmentalCourseLoading}
+                                onSave={handleDepartmentalCourseSave}
+                                onDelete={handleDepartmentalCourseDelete}
+                                onRefresh={() => fetchDepartmentalCourseData(true)}
+                                FormPanel={DepartmentalCoursePanel}
+                                entityName="Departmental Course"
+                                title="Departmental Course List"
                               />
                             </div>
                           ) : null}

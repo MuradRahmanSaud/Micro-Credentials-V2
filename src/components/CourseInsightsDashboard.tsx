@@ -1853,7 +1853,7 @@ export default function CourseInsightsDashboard({
                             <tr className="bg-slate-50/50">
                               <td colSpan={6} className="p-3">
                                 {expandedProgramView === 'details' ? (
-                                  <div className="bg-white border-2 border-slate-200/80 rounded-xl p-4 shadow-sm space-y-4">
+                                  <div className="bg-white border-2 border-slate-200/80 rounded-xl p-4 shadow-inner space-y-4">
                                     {/* Header with program details and a close button */}
                                     <div className="flex items-center justify-between border-b border-slate-100 pb-2">
                                       <div className="flex items-center gap-2">
@@ -2072,7 +2072,12 @@ export default function CourseInsightsDashboard({
                                                     {mc.credit || "—"}
                                                   </td>
                                                   <td className="py-2 px-3 text-right font-medium text-slate-600 whitespace-nowrap">
-                                                    {mc.duration || "—"}
+                                                    {(() => {
+                                                       const d = String(mc.duration || "").trim();
+                                                       if (!d || d === "—" || d === "-") return "—";
+                                                       if (d.toLowerCase().includes("hour") || d.toLowerCase().includes("hrs")) return d;
+                                                       return `${d} Hours`;
+                                                     })()}
                                                   </td>
                                                 </tr>
                                               ))
