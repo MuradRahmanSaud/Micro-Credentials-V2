@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect, useRef } from "react";
 import { resolveNamesOrIdsToIds, isBatchRunning, formatToMmmDdYyyy, parseWorkflowAndStages, getStageAssignment, cn, serializeWorkflowAndStages, parseWorkflowTitle, getPhotoUrl } from "../lib/utils";
-import { Users, Calendar, Info, Briefcase, FileText, Plus, Clock, Save, Check, ExternalLink, Trash2, Edit3, X, Search, ChevronDown, Video, Building2, DollarSign, TrendingUp, Percent, Coins, TrendingDown, Wallet, Banknote, Upload, GitMerge, BookOpen, Eye } from "lucide-react";
+import { Users, Calendar, Info, Briefcase, FileText, Plus, Clock, Save, Check, ExternalLink, Trash2, Edit3, X, Search, ChevronDown, Video, Building2, DollarSign, TrendingUp, Percent, Coins, TrendingDown, Wallet, Banknote, Upload, GitMerge, BookOpen, Eye, Loader2, Lock, Tag } from "lucide-react";
 import axios from "axios";
 import { FOLDER_LOCATIONS } from "../FolderLocation";
 import EmployeeMultiSelect from "./EmployeeMultiSelect";
@@ -439,6 +439,98 @@ export default function BatchDetailsView({
   const [voucherFileUrl, setVoucherFileUrl] = useState<string>("");
   const [isUploadingVoucher, setIsUploadingVoucher] = useState<boolean>(false);
   const [isSavingVoucher, setIsSavingVoucher] = useState<boolean>(false);
+
+  // Document Upload Form states
+  const [isAddDocOpen, setIsAddDocOpen] = useState<boolean>(false);
+  const [docTitle, setDocTitle] = useState<string>("");
+  const [docTag, setDocTag] = useState<string>("");
+  const [docDate, setDocDate] = useState<string>(new Date().toISOString().split("T")[0]);
+  const [docFileUrl, setDocFileUrl] = useState<string>("");
+  const [isUploadingDoc, setIsUploadingDoc] = useState<boolean>(false);
+  const [isSavingDoc, setIsSavingDoc] = useState<boolean>(false);
+  const docFileInputRef = useRef<HTMLInputElement | null>(null);
+
+  const handleDocFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setIsUploadingDoc(true);
+    const formDataUpload = new FormData();
+    const courseCode = batch?.["Course Code"] || "";
+    const batchNo = batch?.["Batch Number"] || "";
+    const fileLocationPrefix = FOLDER_LOCATIONS.DOCUMENTS || "Main Folder/Documents";
+    const customFolderPath = `${fileLocationPrefix}/MC Course/${courseCode}/${batchNo}`;
+
+    formDataUpload.append("file", file);
+    formDataUpload.append("folderPath", customFolderPath);
+    formDataUpload.append("departmentName", docTitle || file.name.replace(/\.[^/.]+$/, ""));
+
+    try {
+      const response = await axios.post("/api/upload", formDataUpload, { timeout: 60000 });
+      const uploadedUrl = response.data?.url || response.data?.fileLink;
+      if (uploadedUrl) {
+        let viewUrl = uploadedUrl;
+        if (viewUrl.includes("drive.google.com/uc") || viewUrl.includes("export=download")) {
+          const fileIdMatch = viewUrl.match(/[?&]id=([^&]+)/);
+          if (fileIdMatch && fileIdMatch[1]) {
+            viewUrl = `https://drive.google.com/file/d/${fileIdMatch[1]}/view`;
+          }
+        }
+        setDocFileUrl(viewUrl);
+      }
+    } catch (error) {
+      console.error("Document upload failed:", error);
+      alert("Document upload failed. Please try again.");
+    } finally {
+      setIsUploadingDoc(false);
+    }
+  };
+
+  const handleSaveDocumentSubmit = async () => {
+    if (!docTitle.trim()) {
+      alert("Please enter a document title.");
+      return;
+    }
+    setIsSavingDoc(true);
+    try {
+      const courseCode = batch?.["Course Code"] || "";
+      const rawBatchNo = batch?.["Batch Number"] || batch?.["Batch No"] || "";
+      const batchNoFormatted = rawBatchNo
+        ? (String(rawBatchNo).toLowerCase().startsWith("batch") ? String(rawBatchNo) : `Batch-${rawBatchNo}`)
+        : "";
+
+      const fixedTags = [courseCode, batchNoFormatted].filter(Boolean);
+      const customTagClean = docTag.trim();
+      const allTags = customTagClean ? [...fixedTags, customTagClean] : fixedTags;
+      const finalTag = allTags.join(", ");
+
+      const newDocObj = {
+        "Documents Title": docTitle.trim(),
+        "Document Title": docTitle.trim(),
+        "Title": docTitle.trim(),
+        "Course Code": courseCode,
+        "Batch Number": rawBatchNo,
+        "Tag": finalTag,
+        "Date": docDate || new Date().toISOString().split("T")[0],
+        "File Link": docFileUrl || "",
+        "Uploaded At": new Date().toISOString()
+      };
+
+      if (onSaveDocument) {
+        await onSaveDocument(newDocObj, null);
+      }
+
+      setIsAddDocOpen(false);
+      setDocTitle("");
+      setDocFileUrl("");
+      setDocTag("");
+      setDocDate(new Date().toISOString().split("T")[0]);
+    } catch (err) {
+      console.error("Failed to save document:", err);
+      alert("Failed to save document.");
+    } finally {
+      setIsSavingDoc(false);
+    }
+  };
 
   const calculatedExpensesSum = useMemo(() => {
     if (!expensesData || !Array.isArray(expensesData)) {
@@ -891,8 +983,31 @@ export default function BatchDetailsView({
     
     return (
       <div className="space-y-3">
+        {/* Document Tab Header Bar */}
+        <div className="flex items-center justify-between gap-2 border-b border-slate-100 pb-2">
+          <div className="flex items-center gap-1.5">
+            <FileText className="w-4 h-4 text-teal-600" />
+            <span className="text-xs font-bold text-slate-800 uppercase tracking-wider">
+              Batch Documents ({batchDocs.length})
+            </span>
+          </div>
+          <button
+            type="button"
+            onClick={() => {
+              setIsAddDocOpen(!isAddDocOpen);
+              if (!isAddDocOpen) {
+                setDocTag("");
+              }
+            }}
+            className="flex items-center gap-1 px-2.5 py-1 bg-teal-600 hover:bg-teal-700 text-white text-[11px] font-bold rounded shadow-2xs transition-all active:scale-95 cursor-pointer shrink-0"
+          >
+            <Plus className="w-3.5 h-3.5" />
+            <span>Upload Document</span>
+          </button>
+        </div>
+
         {documentFilter && (
-          <div className="flex items-center justify-between bg-teal-50 px-3 py-2 rounded-md">
+          <div className="flex items-center justify-between bg-teal-50 px-3 py-1.5 rounded-md border border-teal-200/60">
             <span className="text-xs font-bold text-teal-700">Filtered Documents</span>
             <button
               onClick={() => setDocumentFilter(null)}
@@ -902,6 +1017,142 @@ export default function BatchDetailsView({
             </button>
           </div>
         )}
+
+        {/* Inline Add/Upload Document Form */}
+        {isAddDocOpen && (
+          <div className="p-3 bg-teal-50/70 border border-teal-200 rounded-lg space-y-3 shadow-2xs animate-in fade-in duration-150">
+            <div className="flex items-center justify-between border-b border-teal-200/60 pb-1.5">
+              <span className="text-xs font-bold text-teal-900 uppercase tracking-wider flex items-center gap-1.5">
+                <Upload className="w-3.5 h-3.5 text-teal-600" /> Upload Batch Document
+              </span>
+              <button
+                type="button"
+                onClick={() => setIsAddDocOpen(false)}
+                className="p-1 text-slate-400 hover:text-slate-600 rounded cursor-pointer"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            </div>
+
+            <div className="space-y-2.5 text-xs">
+              <div>
+                <label className="text-[10px] font-bold text-slate-600 uppercase block mb-1">
+                  Document Title *
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g., Batch Syllabus, Class Schedule PDF"
+                  value={docTitle}
+                  onChange={(e) => setDocTitle(e.target.value)}
+                  className="w-full text-xs bg-white border border-slate-200 rounded px-2.5 py-1.5 outline-none focus:border-teal-500"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="text-[10px] font-bold text-slate-600 uppercase block mb-1">
+                    Date
+                  </label>
+                  <input
+                    type="date"
+                    value={docDate}
+                    onChange={(e) => setDocDate(e.target.value)}
+                    className="w-full text-xs bg-white border border-slate-200 rounded px-2 py-1 outline-none focus:border-teal-500"
+                  />
+                </div>
+                <div>
+                  <label className="text-[10px] font-bold text-slate-600 uppercase block mb-1">
+                    Tags
+                  </label>
+                  <div className="flex flex-wrap items-center gap-1 p-1 bg-white border border-slate-200 rounded focus-within:border-teal-500 min-h-[30px]">
+                    {/* Fixed Course Code tag */}
+                    {batch?.["Course Code"] && (
+                      <span className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-slate-100 text-slate-700 text-[10px] font-bold rounded border border-slate-200 select-none shrink-0" title="Course Code (Fixed)">
+                        <Lock className="w-2.5 h-2.5 text-slate-400" />
+                        {batch["Course Code"]}
+                      </span>
+                    )}
+                    {/* Fixed Batch Number tag */}
+                    {(batch?.["Batch Number"] || batch?.["Batch No"]) && (
+                      <span className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-teal-50 text-teal-800 text-[10px] font-bold rounded border border-teal-200 select-none shrink-0" title="Batch Number (Fixed)">
+                        <Lock className="w-2.5 h-2.5 text-teal-500" />
+                        {String(batch["Batch Number"] || batch["Batch No"]).toLowerCase().startsWith("batch")
+                          ? String(batch["Batch Number"] || batch["Batch No"])
+                          : `Batch-${batch["Batch Number"] || batch["Batch No"]}`}
+                      </span>
+                    )}
+                    {/* Custom Tag input */}
+                    <input
+                      type="text"
+                      placeholder="Add tag..."
+                      value={docTag}
+                      onChange={(e) => setDocTag(e.target.value)}
+                      className="flex-1 min-w-[60px] text-xs bg-transparent outline-none border-none p-0 text-slate-800 placeholder:text-slate-400"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <label className="text-[10px] font-bold text-slate-600 uppercase block mb-1">
+                  Document File / URL
+                </label>
+                <div className="flex gap-2 items-center">
+                  <input
+                    type="text"
+                    placeholder="Upload file or enter Google Drive / web URL"
+                    value={docFileUrl}
+                    onChange={(e) => setDocFileUrl(e.target.value)}
+                    className="flex-1 text-xs bg-white border border-slate-200 rounded px-2.5 py-1.5 outline-none focus:border-teal-500"
+                  />
+                  <input
+                    type="file"
+                    ref={docFileInputRef}
+                    className="hidden"
+                    onChange={handleDocFileUpload}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => docFileInputRef.current?.click()}
+                    disabled={isUploadingDoc}
+                    className="px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded border border-slate-200 flex items-center gap-1 shrink-0 cursor-pointer disabled:opacity-50"
+                  >
+                    {isUploadingDoc ? (
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    ) : (
+                      <Upload className="w-3.5 h-3.5" />
+                    )}
+                    <span>{isUploadingDoc ? "Uploading..." : "Browse"}</span>
+                  </button>
+                </div>
+              </div>
+
+              <div className="flex justify-end gap-2 pt-1.5 border-t border-teal-200/60">
+                <button
+                  type="button"
+                  onClick={() => setIsAddDocOpen(false)}
+                  className="px-3 py-1 bg-white border border-slate-200 text-slate-600 text-xs font-bold rounded hover:bg-slate-50 cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  disabled={isSavingDoc || isUploadingDoc || !docTitle.trim()}
+                  onClick={handleSaveDocumentSubmit}
+                  className="px-3 py-1 bg-teal-600 hover:bg-teal-700 text-white text-xs font-bold rounded flex items-center gap-1 cursor-pointer disabled:opacity-50"
+                >
+                  {isSavingDoc ? (
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  ) : (
+                    <Save className="w-3.5 h-3.5" />
+                  )}
+                  <span>Save Document</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
         {batchDocs.length === 0 ? (
           <div className="flex flex-col items-center justify-center p-6 text-center border border-dashed border-slate-200 rounded-md bg-slate-50/50">
             <FileText className="w-8 h-8 text-slate-300 mb-2" />
@@ -916,7 +1167,7 @@ export default function BatchDetailsView({
                 href={doc["File Link"]}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex items-start gap-3 p-2.5 bg-white border border-slate-200 rounded-md hover:border-teal-300 hover:shadow-sm transition-all group"
+                className="flex items-start gap-3 p-2.5 bg-white border border-slate-200 rounded-md hover:border-teal-300 hover:shadow-2xs transition-all group"
               >
                 <div className="w-8 h-8 rounded-md bg-teal-50 flex items-center justify-center shrink-0 group-hover:bg-teal-100 transition-colors">
                   <FileText className="w-4 h-4 text-teal-600" />
@@ -929,6 +1180,11 @@ export default function BatchDetailsView({
                     <span className="text-[9px] font-medium text-slate-500 uppercase tracking-wider">
                       {doc["Date"] ? formatToMmmDdYyyy(doc["Date"]) : "No Date"}
                     </span>
+                    {doc["Tag"] && (
+                      <span className="text-[9px] font-semibold text-teal-700 bg-teal-50 px-1.5 py-0.2 rounded border border-teal-200/60 truncate">
+                        {doc["Tag"]}
+                      </span>
+                    )}
                   </div>
                 </div>
               </a>
@@ -1461,7 +1717,7 @@ export default function BatchDetailsView({
     const profitMargin = netRevenue > 0 ? (netProfit / netRevenue) * 100 : 0;
 
     return (
-      <div className="space-y-3 pt-1">
+      <div className="space-y-3 pt-1 relative min-h-[420px]">
         {/* Main calculated cards */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5">
           <div className="bg-white border border-slate-200 rounded-lg p-2.5 shadow-2xs flex flex-col justify-between">
@@ -1499,196 +1755,49 @@ export default function BatchDetailsView({
 
         {/* Breakdown details & inputs */}
         <div className="grid grid-cols-1 md:grid-cols-12 gap-3">
-          <div className="md:col-span-5 bg-white border border-slate-200 rounded-lg p-3 shadow-2xs">
-            {showVoucherForm ? (
+          <div className="md:col-span-5 bg-white border border-slate-200 rounded-lg p-3 shadow-2xs flex flex-col justify-between">
+            <div>
+              <div className="flex items-center justify-between border-b border-slate-100 pb-1 mb-2.5">
+                <span className="text-[10px] font-extrabold text-slate-600 uppercase tracking-wider">
+                  Core Inputs
+                </span>
+              </div>
+              
               <div className="space-y-2">
-                <div className="flex items-center justify-between border-b border-slate-100 pb-1.5 mb-2.5">
-                  <span className="text-[10px] font-extrabold text-teal-600 uppercase tracking-wider flex items-center gap-1">
-                    <Coins className="w-3.5 h-3.5" /> Add Voucher
-                  </span>
-                  <button 
-                    type="button" 
-                    onClick={() => setShowVoucherForm(false)}
-                    className="p-1 hover:bg-slate-100 rounded text-slate-400 hover:text-slate-600 transition-colors"
-                  >
-                    <X className="w-3.5 h-3.5" />
-                  </button>
+                <div className="flex items-center justify-between py-1 border-b border-slate-50">
+                  <span className="text-[11px] text-slate-500">Course Fee</span>
+                  <span className="text-[11px] font-semibold text-slate-800 font-mono">৳ {fee.toLocaleString()}</span>
                 </div>
-                
-                <div className="space-y-2.5">
-                  <div>
-                    <label className="text-[9px] font-bold text-slate-500 uppercase tracking-wider block mb-0.5">Expenses Title</label>
-                    <input
-                      type="text"
-                      value={voucherTitle}
-                      onChange={(e) => setVoucherTitle(e.target.value)}
-                      className="w-full text-xs bg-slate-50 border border-slate-200 rounded px-2 py-1 outline-none focus:border-teal-500 transition-all"
-                      placeholder="e.g. Room Rent, Server Cost"
-                      required
-                    />
-                  </div>
-                  
-                  <div className="grid grid-cols-2 gap-2">
-                    <div>
-                      <label className="text-[9px] font-bold text-slate-500 uppercase tracking-wider block mb-0.5">Amount (৳)</label>
-                      <input
-                        type="number"
-                        value={voucherAmount}
-                        onChange={(e) => setVoucherAmount(e.target.value)}
-                        className="w-full text-xs font-mono bg-slate-50 border border-slate-200 rounded px-2 py-1 outline-none focus:border-teal-500 transition-all"
-                        placeholder="0"
-                        required
-                      />
-                    </div>
-                    <div>
-                      <label className="text-[9px] font-bold text-slate-500 uppercase tracking-wider block mb-0.5">Date</label>
-                      <input
-                        type="date"
-                        value={voucherDate}
-                        onChange={(e) => setVoucherDate(e.target.value)}
-                        className="w-full text-xs font-mono bg-slate-50 border border-slate-200 rounded px-2 py-1 outline-none focus:border-teal-500 transition-all"
-                      />
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="text-[9px] font-bold text-slate-500 uppercase tracking-wider block mb-0.5">Voucher / File Attachment</label>
-                    <div className="flex gap-1">
-                      <input
-                        type="text"
-                        value={voucherFileUrl}
-                        onChange={(e) => setVoucherFileUrl(e.target.value)}
-                        className="flex-1 text-xs font-mono bg-slate-50 border border-slate-200 rounded px-2 py-1 outline-none focus:border-teal-500 transition-all"
-                        placeholder="https://example.com/voucher..."
-                      />
-                      <label className="bg-slate-100 hover:bg-slate-200 border border-slate-300 rounded px-2 py-1 text-[10px] font-bold text-slate-600 cursor-pointer flex items-center justify-center gap-1 transition-colors">
-                        <Upload className="w-3 h-3" />
-                        <input
-                          type="file"
-                          onChange={handleVoucherFileUpload}
-                          className="hidden"
-                          disabled={isUploadingVoucher}
-                        />
-                      </label>
-                    </div>
-                    {isUploadingVoucher && (
-                      <span className="text-[8px] text-teal-600 flex items-center gap-1 mt-0.5 italic">
-                        <span className="w-2 h-2 rounded-full border border-teal-600 border-t-transparent animate-spin inline-block"></span> Uploading...
-                      </span>
-                    )}
-                  </div>
-
-                  <div>
-                    <label className="text-[9px] font-bold text-slate-500 uppercase tracking-wider block mb-0.5">Tag (Auto-filled)</label>
-                    <input
-                      type="text"
-                      value={`${batch["Course Code"] || ""}-${batch["Batch Number"] || ""}`}
-                      className="w-full text-xs font-mono bg-slate-100 text-slate-500 border border-slate-200 rounded px-2 py-1 outline-none cursor-not-allowed"
-                      readOnly
-                    />
-                  </div>
-                  
-                  <div className="flex gap-2 pt-1.5">
-                    <button
-                      type="button"
-                      onClick={() => setShowVoucherForm(false)}
-                      className="flex-1 text-[10px] font-bold text-slate-500 hover:text-slate-700 bg-slate-50 hover:bg-slate-100 border border-slate-200 py-1.5 rounded transition-all"
-                    >
-                      CANCEL
-                    </button>
-                    <button
-                      type="button"
-                      onClick={handleSaveVoucherSubmit}
-                      disabled={isSavingVoucher || !voucherTitle || !voucherAmount}
-                      className="flex-1 text-[10px] font-bold text-white bg-teal-600 hover:bg-teal-700 disabled:opacity-50 disabled:cursor-not-allowed py-1.5 rounded shadow-sm hover:shadow transition-all flex items-center justify-center gap-1"
-                    >
-                      {isSavingVoucher ? "SAVING..." : "SAVE VOUCHER"}
-                    </button>
-                  </div>
+                <div className="flex items-center justify-between py-1 border-b border-slate-50">
+                  <span className="text-[11px] text-slate-500">Enrolled Students</span>
+                  <span className="text-[11px] font-semibold text-slate-800 font-mono">{enrolled}</span>
+                </div>
+                <div className="flex items-center justify-between py-1 border-b border-slate-50">
+                  <span className="text-[11px] text-slate-500">Discount</span>
+                  <span className="text-[11px] font-semibold text-rose-600 font-mono">− ৳ {discount.toLocaleString()}</span>
+                </div>
+                <div className="flex items-center justify-between py-1">
+                  <span className="text-[11px] text-slate-500">Expenses</span>
+                  <span className="text-[11px] font-semibold text-rose-600 font-mono">− ৳ {expenses.toLocaleString()}</span>
                 </div>
               </div>
-            ) : (
-              <>
-                <span className="text-[10px] font-extrabold text-slate-600 uppercase tracking-wider block mb-2.5 pb-1 border-b border-slate-100">
-                  {isEditing ? "Modify Financial Inputs" : "Core Inputs"}
-                </span>
-                
-                {isEditing ? (
-                  <div className="space-y-2">
-                    <div>
-                      <label className="text-[9px] font-bold text-slate-500 uppercase tracking-wider block mb-0.5">Course Fee (৳)</label>
-                      <input
-                        type="text"
-                        value={batch["Course Fee"] !== undefined ? batch["Course Fee"] : (courseFee || "")}
-                        onChange={(e) => onSaveBatch && onSaveBatch({ ...batch, "Course Fee": e.target.value })}
-                        className="w-full text-xs font-mono bg-slate-50 border border-slate-200 rounded px-2 py-1 focus:border-teal-500 outline-none transition-all"
-                        placeholder="0"
-                      />
-                    </div>
-                    <div>
-                      <label className="text-[9px] font-bold text-slate-500 uppercase tracking-wider block mb-0.5">Enrolled Students</label>
-                      <input
-                        type="number"
-                        value={batch["Student"] || ""}
-                        onChange={(e) => onSaveBatch && onSaveBatch({ ...batch, "Student": e.target.value })}
-                        className="w-full text-xs font-mono bg-slate-50 border border-slate-200 rounded px-2 py-1 focus:border-teal-500 outline-none transition-all"
-                        placeholder="0"
-                      />
-                    </div>
-                    <div>
-                      <label className="text-[9px] font-bold text-slate-500 uppercase tracking-wider block mb-0.5">Discount Given (৳)</label>
-                      <input
-                        type="text"
-                        value={batch["Discount"] !== undefined ? batch["Discount"] : ""}
-                        onChange={(e) => onSaveBatch && onSaveBatch({ ...batch, "Discount": e.target.value })}
-                        className="w-full text-xs font-mono bg-slate-50 border border-slate-200 rounded px-2 py-1 focus:border-teal-500 outline-none transition-all"
-                        placeholder="0"
-                      />
-                    </div>
-                    <div>
-                      <label className="text-[9px] font-bold text-slate-500 uppercase tracking-wider block mb-0.5">Expenses (৳)</label>
-                      <div className="flex gap-1.5 items-center">
-                        <div className="flex-1 text-xs font-mono bg-slate-100 text-slate-600 border border-slate-200 rounded px-2.5 py-1.5">
-                          ৳ {expenses.toLocaleString()}
-                        </div>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setVoucherTitle("");
-                            setVoucherAmount("");
-                            setVoucherFileUrl("");
-                            setVoucherDate(new Date().toISOString().split('T')[0]);
-                            setShowVoucherForm(true);
-                          }}
-                          className="px-3 py-1.5 bg-teal-50 hover:bg-teal-100 text-teal-600 border border-teal-200 text-[10px] font-extrabold uppercase tracking-wider rounded transition-all flex items-center gap-1 cursor-pointer"
-                        >
-                          <Plus className="w-3.5 h-3.5 animate-pulse text-teal-600" /> Add Voucher
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between py-1 border-b border-slate-50">
-                      <span className="text-[11px] text-slate-500">Course Fee</span>
-                      <span className="text-[11px] font-semibold text-slate-800 font-mono">৳ {fee.toLocaleString()}</span>
-                    </div>
-                    <div className="flex items-center justify-between py-1 border-b border-slate-50">
-                      <span className="text-[11px] text-slate-500">Enrolled Students</span>
-                      <span className="text-[11px] font-semibold text-slate-800 font-mono">{enrolled}</span>
-                    </div>
-                    <div className="flex items-center justify-between py-1 border-b border-slate-50">
-                      <span className="text-[11px] text-slate-500">Discount</span>
-                      <span className="text-[11px] font-semibold text-rose-600 font-mono">− ৳ {discount.toLocaleString()}</span>
-                    </div>
-                    <div className="flex items-center justify-between py-1">
-                      <span className="text-[11px] text-slate-500">Expenses</span>
-                      <span className="text-[11px] font-semibold text-rose-600 font-mono">− ৳ {expenses.toLocaleString()}</span>
-                    </div>
-                  </div>
-                )}
-              </>
-            )}
+            </div>
+
+            <div className="pt-3 border-t border-slate-100 mt-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setVoucherTitle("");
+                  setVoucherAmount("");
+                  setVoucherFileUrl("");
+                  setVoucherDate(new Date().toISOString().split('T')[0]);
+                  setShowVoucherForm(true);
+                }}
+                className="w-full px-3 py-1.5 bg-teal-600 hover:bg-teal-700 text-white text-[11px] font-extrabold uppercase tracking-wider rounded shadow-2xs transition-all flex items-center justify-center gap-1.5 cursor-pointer active:scale-95"
+              >
+                <Plus className="w-3.5 h-3.5" /> Add Expense
+              </button>
+            </div>
           </div>
 
           <div className="md:col-span-7 bg-white border border-slate-200 rounded-lg p-3 shadow-2xs">
@@ -1742,6 +1851,8 @@ export default function BatchDetailsView({
             </div>
           </div>
         </div>
+
+        {/* Full-width/height Overlay Panel for Add Voucher Form */}
       </div>
     );
   };
@@ -1757,7 +1868,7 @@ export default function BatchDetailsView({
   return (
     <div id="batch-details-view-container" className="bg-white h-full w-full flex-1 flex flex-col sm:flex-row min-h-0 relative divide-y sm:divide-y-0 sm:divide-x divide-slate-200">
       {/* Vertical Tab Navigation Sidebar */}
-      <div className="w-full sm:w-52 shrink-0 bg-slate-50/70 p-2 space-y-1 overflow-y-auto no-scrollbar border-b sm:border-b-0 border-slate-200">
+      <div className="w-full sm:w-52 shrink-0 bg-slate-50/70 p-2 space-y-1 overflow-y-auto no-scrollbar border-b sm:border-b-0 border-slate-200 relative">
         <div className="px-2.5 py-1.5 text-[10px] font-bold text-slate-400 uppercase tracking-widest hidden sm:block">
           Batch Information
         </div>
@@ -1788,10 +1899,148 @@ export default function BatchDetailsView({
             );
           })}
         </div>
+
+        {/* Overlay Panel for Add Voucher Form - matching side tab width & height */}
+        <AnimatePresence>
+          {showVoucherForm && (
+            <motion.div
+              initial={{ opacity: 0, x: -10 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -10 }}
+              transition={{ duration: 0.18 }}
+              className="absolute inset-0 bg-white z-30 p-3 shadow-md flex flex-col overflow-y-auto no-scrollbar border-r border-slate-200"
+            >
+              <div className="flex items-center justify-between border-b border-slate-200 pb-2 mb-3 shrink-0">
+                <div className="flex items-center gap-1.5">
+                  <div className="w-6 h-6 rounded bg-teal-50 border border-teal-200/80 flex items-center justify-center shrink-0">
+                    <Coins className="w-3.5 h-3.5 text-teal-600" />
+                  </div>
+                  <h4 className="text-xs font-bold text-slate-800 uppercase tracking-wider leading-tight">
+                    Add Voucher
+                  </h4>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowVoucherForm(false)}
+                  className="p-1 hover:bg-slate-100 rounded text-slate-400 hover:text-slate-600 transition-colors cursor-pointer shrink-0"
+                  title="Close"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              </div>
+
+              <div className="space-y-2.5 text-xs flex-1">
+                <div>
+                  <label className="text-[10px] font-bold text-slate-600 uppercase tracking-wider block mb-0.5">
+                    Expenses Title *
+                  </label>
+                  <input
+                    type="text"
+                    value={voucherTitle}
+                    onChange={(e) => setVoucherTitle(e.target.value)}
+                    className="w-full text-xs bg-slate-50 border border-slate-200 rounded px-2 py-1.5 outline-none focus:border-teal-500 focus:bg-white transition-all"
+                    placeholder="e.g. Room Rent"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label className="text-[10px] font-bold text-slate-600 uppercase tracking-wider block mb-0.5">
+                    Amount (৳) *
+                  </label>
+                  <input
+                    type="number"
+                    value={voucherAmount}
+                    onChange={(e) => setVoucherAmount(e.target.value)}
+                    className="w-full text-xs font-mono bg-slate-50 border border-slate-200 rounded px-2 py-1.5 outline-none focus:border-teal-500 focus:bg-white transition-all"
+                    placeholder="0"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label className="text-[10px] font-bold text-slate-600 uppercase tracking-wider block mb-0.5">
+                    Date
+                  </label>
+                  <input
+                    type="date"
+                    value={voucherDate}
+                    onChange={(e) => setVoucherDate(e.target.value)}
+                    className="w-full text-xs font-mono bg-slate-50 border border-slate-200 rounded px-2 py-1.5 outline-none focus:border-teal-500 focus:bg-white transition-all"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-[10px] font-bold text-slate-600 uppercase tracking-wider block mb-0.5">
+                    Voucher File / Attachment
+                  </label>
+                  <input
+                    type="text"
+                    value={voucherFileUrl}
+                    onChange={(e) => setVoucherFileUrl(e.target.value)}
+                    className="w-full text-xs font-mono bg-slate-50 border border-slate-200 rounded px-2 py-1.5 outline-none focus:border-teal-500 focus:bg-white transition-all mb-1"
+                    placeholder="https://..."
+                  />
+                  <label className="w-full bg-slate-100 hover:bg-slate-200 border border-slate-300 rounded py-1 px-2 text-[11px] font-bold text-slate-700 cursor-pointer flex items-center justify-center gap-1 transition-colors">
+                    <Upload className="w-3 h-3" />
+                    <span>Browse File</span>
+                    <input
+                      type="file"
+                      onChange={handleVoucherFileUpload}
+                      className="hidden"
+                      disabled={isUploadingVoucher}
+                    />
+                  </label>
+                  {isUploadingVoucher && (
+                    <span className="text-[9px] text-teal-600 flex items-center gap-1 mt-1 font-medium italic">
+                      <Loader2 className="w-3 h-3 animate-spin" /> Uploading...
+                    </span>
+                  )}
+                </div>
+
+                <div>
+                  <label className="text-[10px] font-bold text-slate-600 uppercase tracking-wider block mb-0.5">
+                    Tag (Auto)
+                  </label>
+                  <input
+                    type="text"
+                    value={`${batch["Course Code"] || ""}-${batch["Batch Number"] || ""}`}
+                    className="w-full text-[11px] font-mono bg-slate-100 text-slate-500 border border-slate-200 rounded px-2 py-1 outline-none cursor-not-allowed"
+                    readOnly
+                  />
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2 pt-3 border-t border-slate-200 mt-3 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => setShowVoucherForm(false)}
+                  className="flex-1 py-1.5 text-xs font-bold text-slate-600 hover:text-slate-800 bg-slate-100 hover:bg-slate-200 border border-slate-200 rounded transition-all cursor-pointer"
+                >
+                  CANCEL
+                </button>
+                <button
+                  type="button"
+                  onClick={handleSaveVoucherSubmit}
+                  disabled={isSavingVoucher || !voucherTitle || !voucherAmount}
+                  className="flex-1 py-1.5 text-xs font-bold text-white bg-teal-600 hover:bg-teal-700 disabled:opacity-50 disabled:cursor-not-allowed rounded shadow-2xs transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+                >
+                  {isSavingVoucher ? (
+                    <>
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" /> SAVING...
+                    </>
+                  ) : (
+                    "SAVE"
+                  )}
+                </button>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
 
       {/* Main Tab Content Panel */}
-      <div className="flex-1 overflow-y-auto no-scrollbar p-4 min-h-0 bg-white">
+      <div className="flex-1 overflow-y-auto no-scrollbar p-4 min-h-0 bg-white relative">
         <AnimatePresence mode="wait">
           <motion.div
             key={activeTab}
@@ -1799,85 +2048,10 @@ export default function BatchDetailsView({
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -5 }}
             transition={{ duration: 0.15 }}
+            className="relative"
           >
             {activeTab === 'info' && (
-              <div className="space-y-5 pt-2">
-                {/* Course Info Section matching Course Detail view Basic Info */}
-                <div className="space-y-2">
-                  <div className="text-[11px] font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1.5 px-0.5">
-                    <BookOpen className="w-3.5 h-3.5 text-teal-600" />
-                    <span>Course Info</span>
-                  </div>
-                  <div className="bg-white rounded-xl border border-slate-200/80 p-4 shadow-xs space-y-3">
-                    {/* Banner Image Preview */}
-                    {(() => {
-                      const bannerUrl = parentCourse?.["Banner"] || batch?.["Banner"];
-                      let displayUrl = bannerUrl;
-                      const fileIdMatch = bannerUrl?.match(/[-\w]{25,}/);
-                      if (fileIdMatch && bannerUrl?.includes('drive.google.com')) {
-                        displayUrl = `https://drive.google.com/thumbnail?id=${fileIdMatch[0]}&sz=w1000`;
-                      }
-                      if (!displayUrl) return null;
-                      return (
-                        <div className="w-full h-32 md:h-40 rounded-lg overflow-hidden border border-slate-200/80 relative mb-3 bg-slate-100">
-                          <img src={displayUrl} alt="Course Banner" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
-                        </div>
-                      );
-                    })()}
-
-                    {/* Title, Code & Date */}
-                    <div>
-                      <h3 className="text-sm md:text-base font-semibold text-slate-800 leading-snug">
-                        {parentCourse?.["Course Title"] || batch?.["Course Title"] || "—"}
-                      </h3>
-                      <div className="flex items-center gap-3 mt-0.5">
-                        <p className="text-xs font-bold text-teal-700 uppercase font-mono tracking-wider">
-                          {parentCourse?.["Course Code"] || batch?.["Course Code"] || "—"}
-                        </p>
-                        {(parentCourse?.["Date"] || batch?.["Date"]) && (
-                          <span className="text-xs text-slate-500 font-mono font-medium">
-                            • {parentCourse?.["Date"] || batch?.["Date"]}
-                          </span>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Metrics Grid */}
-                    <div className="pt-3 border-t border-slate-100 grid grid-cols-2 sm:grid-cols-5 gap-3 text-center">
-                      <div>
-                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block">Duration</span>
-                        <span className="text-xs font-bold text-slate-800 font-mono block mt-0.5">
-                          {parentCourse?.["Duration"] || batch?.["Duration"] || "—"}
-                        </span>
-                      </div>
-                      <div>
-                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block">Class</span>
-                        <span className="text-xs font-bold text-slate-800 font-mono block mt-0.5">
-                          {parentCourse?.["Class"] ?? parentCourse?.["No. of Class"] ?? batch?.["Class"] ?? batch?.["No. of Class"] ?? "—"}
-                        </span>
-                      </div>
-                      <div>
-                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block">Student</span>
-                        <span className="text-xs font-bold text-slate-800 font-mono block mt-0.5">
-                          {parentCourse?.["Student Size"] ?? parentCourse?.["Student"] ?? batch?.["Student Size"] ?? batch?.["Student"] ?? "—"}
-                        </span>
-                      </div>
-                      <div>
-                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block">Course Fee</span>
-                        <span className="text-xs font-bold text-slate-800 font-mono block mt-0.5">
-                          ৳{parentCourse?.["Course Fee"] || batch?.["Course Fee"] || "—"}
-                        </span>
-                      </div>
-                      <div>
-                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block">Mode</span>
-                        <span className="text-xs font-bold text-teal-700 font-mono block mt-0.5">
-                          {parentCourse?.["Mode"] || batch?.["Mode"] || "—"}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
+              <div className="space-y-6 pt-3">
                 {/* Dates / Schedule Box with Schedule label horizontally & vertically centered on top border */}
                 <div className="relative border border-slate-200 bg-white rounded-lg p-3.5 pt-4">
                   <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-white px-2.5 py-0.5 border border-slate-200 rounded-full flex items-center gap-1.5 text-slate-600 shadow-2xs z-10">

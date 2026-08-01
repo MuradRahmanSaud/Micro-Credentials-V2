@@ -255,7 +255,7 @@ export default function MCCourseDetails({
   
   useEffect(() => {
     if (isAddBatchOpen) {
-      const timer = setTimeout(() => {
+      if (newBatchesData.length === 0) {
         const nextBatchNumber = getNextBatchNumber([]);
         setNewBatchesData([
           {
@@ -268,8 +268,7 @@ export default function MCCourseDetails({
             "Discount": ""
           }
         ]);
-      }, 100);
-      return () => clearTimeout(timer);
+      }
     } else {
       setNewBatchesData([]);
       setBatchWarning(null);
@@ -296,7 +295,7 @@ export default function MCCourseDetails({
     }
   }, [isExpanded, activeSidebarTab]);
   const [documentFilter, setDocumentFilter] = useState<string | null>(null);
-  const [selectedBatchIndex, setSelectedBatchIndex] = useState<number | null>(0);
+  const [selectedBatchIndex, setSelectedBatchIndex] = useState<number | null>(null);
   const [collapsedExpandedBatchIdx, setCollapsedExpandedBatchIdx] = useState<number | null>(null);
   const [inlineEditingBatchKey, setInlineEditingBatchKey] = useState<string | null>(null);
   const [batchSearchTerm, setBatchSearchTerm] = useState("");
@@ -425,33 +424,21 @@ export default function MCCourseDetails({
   const handleAddBatch = async () => {
     const validBatches = newBatchesData.filter(b => b["Start Date"] && b["End Date"]);
     if (validBatches.length === 0) {
-      setIsAddBatchOpen(false);
+      setBatchWarning("invalid");
       return;
     }
 
     const batchesToSave = validBatches.map(b => ({
       ...b,
-      "Course Code": data?.['Course Code'],
-      "Course Name": data?.['Course Title']
+      "Course Code": data?.['Course Code'] || editedData?.['Course Code'],
+      "Course Name": data?.['Course Title'] || editedData?.['Course Title']
     }));
 
-    if (isEditing) {
-      setLocalNewBatches(prev => [...prev, ...batchesToSave]);
-      setIsAddBatchOpen(false);
-      setNewBatchesData([]);
-      setBatchWarning(null);
-      return;
-    }
-
-    if (extraFormProps?.onSaveBatch) {
-      setIsSubmitting(true);
-      const promises = batchesToSave.map(batchToSave => extraFormProps.onSaveBatch!(batchToSave, null));
-      await Promise.all(promises);
-      setIsSubmitting(false);
-      setIsAddBatchOpen(false);
-      setNewBatchesData([]);
-      setBatchWarning(null);
-    }
+    setLocalNewBatches(prev => [...batchesToSave, ...prev]);
+    setIsAddBatchOpen(false);
+    setNewBatchesData([]);
+    setBatchWarning(null);
+    setIsEditing(true);
   };
 
   const addBatchRowRef = useRef<HTMLTableRowElement | null>(null);
@@ -564,8 +551,8 @@ export default function MCCourseDetails({
 
   const courseBatches = useMemo(() => {
     return [
-      ...batches.filter(b => b['Course Code'] === data?.['Course Code'] || b['Course Name'] === data?.['Course Title']),
-      ...localNewBatches
+      ...localNewBatches,
+      ...batches.filter(b => b['Course Code'] === data?.['Course Code'] || b['Course Name'] === data?.['Course Title'])
     ].map(b => {
       const key = b["Batch Number"] || b["id"] || b["ID"];
       return editedBatches[key] || b;
@@ -1860,7 +1847,7 @@ export default function MCCourseDetails({
             className={cn(
               "bg-white flex flex-col overflow-hidden",
               isExpanded 
-                ? "w-full lg:w-[380px] xl:w-[440px] shrink-0 border-l border-slate-100 h-full" 
+                ? "w-full lg:w-[310px] xl:w-[350px] shrink-0 border-l border-slate-100 h-full" 
                 : "flex-1 border-t border-slate-100"
             )}
           >
@@ -2016,7 +2003,7 @@ export default function MCCourseDetails({
               </AnimatePresence>
 
               {/* Remarks List */}
-              <div className="space-y-3">
+              <div className="space-y-2.5">
                  {(() => {
                    const parsedRemarks = parseRemarks(editedData?.['Remarks'] || data?.['Remarks']);
                    if (parsedRemarks.length === 0) {
@@ -2029,25 +2016,50 @@ export default function MCCourseDetails({
                      );
                    }
 
-                   return parsedRemarks.map((remark, idx) => (
-                      <div key={remark.id || idx} className="bg-slate-50 border border-slate-100 rounded-lg p-3 space-y-2 relative group overflow-hidden">
-                         <div className="flex items-center justify-between">
-                           <span className="text-[10px] font-bold text-slate-600 uppercase tracking-wider flex items-center gap-1.5">
-                             <div className="w-4 h-4 rounded-full bg-teal-100 text-teal-700 flex items-center justify-center shrink-0">
-                               <User className="w-2.5 h-2.5" />
+                   return parsedRemarks.map((remark, idx) => {
+                     const emp = employees.find(e => (e['Employee Name'] || e['Full Name']) === remark.employeeName);
+                     const photoUrl = emp ? getPhotoUrl(emp) : null;
+                     const designation = emp ? (emp['Designation'] || emp['Job Title'] || '') : '';
+
+                     return (
+                       <div key={remark.id || idx} className="bg-slate-50 border border-slate-200/80 rounded-lg p-2.5 space-y-2 relative group overflow-hidden">
+                         <div className="flex items-start justify-between gap-2">
+                           <div className="flex items-center gap-2 min-w-0">
+                             {photoUrl ? (
+                               <img src={photoUrl} alt={remark.employeeName} className="w-7 h-7 rounded-full object-cover shrink-0 border border-slate-200" referrerPolicy="no-referrer" />
+                             ) : (
+                               <div className="w-7 h-7 rounded-full bg-teal-100 text-teal-700 flex items-center justify-center shrink-0 border border-teal-200/60 font-bold text-xs">
+                                 {remark.employeeName ? remark.employeeName.charAt(0).toUpperCase() : <User className="w-3.5 h-3.5" />}
+                               </div>
+                             )}
+                             <div className="flex flex-col min-w-0">
+                               <span className="text-[11px] font-bold text-slate-800 truncate leading-tight">
+                                 {remark.employeeName}
+                               </span>
+                               {designation ? (
+                                 <span className="text-[9.5px] font-medium text-slate-500 truncate leading-tight">
+                                   {designation}
+                                 </span>
+                               ) : (
+                                 <span className="text-[9.5px] font-medium text-slate-400 italic truncate leading-tight">
+                                   Staff
+                                 </span>
+                               )}
                              </div>
-                             {remark.employeeName}
-                           </span>
-                           <span className="text-[9px] text-slate-400 font-medium flex items-center gap-1 bg-white px-1.5 py-0.5 rounded border border-slate-200">
-                             <Calendar className="w-2.5 h-2.5" />
+                           </div>
+
+                           <span className="text-[9px] text-slate-500 font-medium flex items-center gap-1 bg-white px-1.5 py-0.5 rounded border border-slate-200/80 shrink-0">
+                             <Calendar className="w-2.5 h-2.5 text-slate-400" />
                              {formatToMmmDdYyyy(remark.date) || remark.date}
                            </span>
                          </div>
-                         <p className="text-[11px] text-slate-700 whitespace-pre-wrap leading-relaxed">
+
+                         <p className="text-[11px] text-slate-700 whitespace-pre-wrap leading-relaxed pl-0.5">
                            {remark.text}
                          </p>
-                      </div>
-                   ));
+                       </div>
+                     );
+                   });
                  })()}
               </div>
             </div>
@@ -2058,27 +2070,6 @@ export default function MCCourseDetails({
         {/* Add Modals */}
         {extraFormProps && (
           <>
-            <MCBatchPanel 
-              isOpen={isAddBatchOpen}
-              onClose={() => setIsAddBatchOpen(false)}
-              onSave={async (formData) => {
-                 if (isEditing) {
-                   setLocalNewBatches(prev => [...prev, formData]);
-                   setIsAddBatchOpen(false);
-                 } else if (extraFormProps.onSaveBatch) {
-                   await extraFormProps.onSaveBatch(formData, null);
-                   setIsAddBatchOpen(false);
-                 }
-              }}
-              onDelete={async () => {}}
-              headers={extraFormProps.batchHeaders || []}
-              employees={employees}
-              initialData={{
-                'Course Code': data?.['Course Code'],
-                'Course Name': data?.['Course Title']
-              }}
-            />
-            
             <DocumentsPanel 
               isOpen={isAddDocumentOpen}
               onClose={() => setIsAddDocumentOpen(false)}

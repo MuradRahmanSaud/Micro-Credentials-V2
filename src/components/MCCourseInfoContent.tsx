@@ -656,7 +656,7 @@ export const MCCourseInfoContent: React.FC<MCCourseInfoContentProps> = ({
             return (
               <div className="flex flex-col h-full min-h-0 flex-1">
                 <div className="flex-1 overflow-y-auto no-scrollbar space-y-0 h-full flex flex-col min-h-0">
-                  {isEditing && (
+                  {isEditing ? (
                     <div className="p-3 border-b border-slate-200">
                       <WorkflowMultiSelector
                         parsedWorkflows={parsedWorkflows}
@@ -672,9 +672,7 @@ export const MCCourseInfoContent: React.FC<MCCourseInfoContentProps> = ({
                         }}
                       />
                     </div>
-                  )}
-
-                  {!jobTitle ? (
+                  ) : !jobTitle ? (
                     <div className="flex flex-col items-center justify-center h-full text-center py-12 px-4">
                       <Briefcase className="w-7 h-7 text-slate-300 mb-2" />
                       <span className="text-[13px] font-medium text-slate-400 uppercase tracking-wider">No Workflow Assigned</span>

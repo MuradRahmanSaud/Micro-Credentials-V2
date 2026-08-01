@@ -568,7 +568,7 @@ export default function MCBatchDetails({
 
             {/* Sidebar Body */}
             <div className="flex-1 overflow-y-auto no-scrollbar p-3 space-y-3">
-              {isEditing && (
+              {isEditing ? (
                 <WorkflowMultiSelector
                   parsedWorkflows={parsedWorkflows}
                   courseWorkflow={editedData?.['Workflow'] || editedData?.['Publication Workflow'] || data?.['Workflow'] || data?.['Publication Workflow'] || parentCourse?.['Workflow'] || ""}
@@ -581,9 +581,7 @@ export default function MCBatchDetails({
                     }));
                   }}
                 />
-              )}
-
-              {(() => {
+              ) : (() => {
                 const batchWorkflow = editedData?.['Workflow'] || editedData?.['Publication Workflow'] || data?.['Workflow'] || data?.['Publication Workflow'] || parentCourse?.['Workflow'] || "";
                 const { jobTitle, stageAssignments } = parseWorkflowAndStages(batchWorkflow);
 
