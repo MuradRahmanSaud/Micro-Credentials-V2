@@ -1671,8 +1671,8 @@ export default function MCCourseDetails({
                                 {editedData?.['Course Code'] || data?.['Course Code'] || 'CODE'}
                               </span>
                             </div>
-                            <div className="flex flex-col gap-0.5 w-full max-w-md">
-                              <h2 className="text-base md:text-lg font-medium text-white uppercase tracking-wider leading-tight drop-shadow-md truncate">
+                            <div className="flex flex-col gap-0.5 w-full">
+                              <h2 className="text-base md:text-lg font-medium text-white uppercase tracking-wider leading-snug drop-shadow-md break-words">
                                 {editedData?.['Course Title'] || data?.['Course Title'] || 'Untitled Course'}
                               </h2>
                             </div>

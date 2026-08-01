@@ -1359,7 +1359,7 @@ export const MCCourseInfoContent: React.FC<MCCourseInfoContentProps> = ({
                         <FloatingInput
                           label="Published Link"
                           type="text"
-                          placeholder="https://..."
+                          placeholder=""
                           value={publishedLink}
                           onChange={(e: any) => {
                             handleInputChange("Published Link", e.target.value);

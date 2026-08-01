@@ -534,6 +534,23 @@ export default forwardRef(function Table({
                 setSearchTerm(e.target.value);
                 setCurrentPage(1);
               }}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  if (searchTerm.trim() && filteredData.length > 0 && onRowClick) {
+                    const searchClean = searchTerm.trim().toLowerCase();
+                    const exactMatch = filteredData.find((row) => {
+                      const code = String(row["Course Code"] || row["Course_Code"] || row["Code"] || row["CourseCode"] || "").trim().toLowerCase();
+                      return code === searchClean;
+                    });
+                    if (exactMatch) {
+                      onRowClick(exactMatch);
+                    } else {
+                      onRowClick(filteredData[0]);
+                    }
+                  }
+                }
+              }}
             />
 
             <AnimatePresence>
