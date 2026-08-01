@@ -313,7 +313,7 @@ export default function App() {
     gid: mcBatchGid,
     localStorageKey: "mc_batch_data",
     fallbackHeaders: [
-      "Course Code", "Batch Number", "Start Date", "End Date", "Student", "Instractor", "Routine", "Course Fee", "Discount"
+      "Course Code", "Batch Number", "Start Date", "End Date", "Student", "Instractor", "Routine", "Course Fee", "Discount", "Remarks"
     ]
   });
 
@@ -1886,7 +1886,45 @@ export default function App() {
                                   allDocuments: documentsData,
                                   onSelectBatch: (batch: any) => setSelectedBatch(batch)
                                 }}
-                              />
+                              >
+                                <MCBatchDetails 
+                                  isOpen={isBatchDetailsOpen}
+                                  onClose={() => {
+                                    setIsBatchDetailsOpen(false);
+                                    if (previousMcSubTab) {
+                                      setMcSubTab(previousMcSubTab);
+                                      setPreviousMcSubTab(null);
+                                    }
+                                  }}
+                                  data={selectedBatch}
+                                  onSelectBatch={(batch) => setSelectedBatch(batch)}
+                                  allBatches={enrichedMcBatchData}
+                                  onSave={handleMCBatchSave}
+                                  employees={data}
+                                  courses={courseData}
+                                  documents={documentsData}
+                                  workflowData={workflowData}
+                                  extraFormProps={{
+                                    onViewFile: (url, title, doc) => setViewingFile({ url, title, doc }),
+                                    employees: data,
+                                    onSaveBatch: handleMCBatchSave,
+                                    onSaveDocument: handleDocumentSave,
+                                    batchHeaders: mcBatchHeaders,
+                                    documentHeaders: documentsHeaders,
+                                    expensesData: expensesData,
+                                    onSaveExpense: handleExpenseSave,
+                                    expensesHeaders: expensesHeaders,
+                                    programNameData: programNameData,
+                                    programNameHeaders: programNameHeaders,
+                                    courseOfferData: courseOfferData,
+                                    courseOfferHeaders: courseOfferHeaders,
+                                    allCourses: courseData,
+                                    allDocuments: documentsData,
+                                    onSelectBatch: (batch: any) => setSelectedBatch(batch)
+                                  }}
+                                  initialExpanded={isBatchDetailsExpanded}
+                                />
+                              </Table>
                             </div>
                           ) : mcSubTab === "class_routine" ? (
                             <div className="flex-1 overflow-hidden relative flex flex-col">
@@ -2038,44 +2076,6 @@ export default function App() {
                           ) : null}
                         </motion.div>
                       </AnimatePresence>
-
-                      <MCBatchDetails 
-                        isOpen={isBatchDetailsOpen}
-                        onClose={() => {
-                          setIsBatchDetailsOpen(false);
-                          if (previousMcSubTab) {
-                            setMcSubTab(previousMcSubTab);
-                            setPreviousMcSubTab(null);
-                          }
-                        }}
-                        data={selectedBatch}
-                        onSelectBatch={(batch) => setSelectedBatch(batch)}
-                        allBatches={enrichedMcBatchData}
-                        onSave={handleMCBatchSave}
-                        employees={data}
-                        courses={courseData}
-                        documents={documentsData}
-                        workflowData={workflowData}
-                        extraFormProps={{
-                          onViewFile: (url, title, doc) => setViewingFile({ url, title, doc }),
-                          employees: data,
-                          onSaveBatch: handleMCBatchSave,
-                          onSaveDocument: handleDocumentSave,
-                          batchHeaders: mcBatchHeaders,
-                          documentHeaders: documentsHeaders,
-                          expensesData: expensesData,
-                          onSaveExpense: handleExpenseSave,
-                          expensesHeaders: expensesHeaders,
-                          programNameData: programNameData,
-                          programNameHeaders: programNameHeaders,
-                          courseOfferData: courseOfferData,
-                          courseOfferHeaders: courseOfferHeaders,
-                          allCourses: courseData,
-                          allDocuments: documentsData,
-                          onSelectBatch: (batch: any) => setSelectedBatch(batch)
-                        }}
-                        initialExpanded={isBatchDetailsExpanded}
-                      />
                     </div>
                   </div>
                 ) : activeTab === "settings" ? (

@@ -1,10 +1,11 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { X, Edit2, Save, Loader2, Maximize2, Minimize2, ChevronLeft, ChevronRight, Activity, Calendar, Users, Briefcase, FileText, Check, Plus, BookOpen } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import { cn, formatToMmmDdYyyy, isBatchRunning, parseWorkflowAndStages, serializeWorkflowAndStages, parseWorkflowTitle, getPhotoUrl } from '../lib/utils';
+import { cn, formatToMmmDdYyyy, isBatchRunning, parseWorkflowAndStages, serializeWorkflowAndStages, parseWorkflowTitle, getPhotoUrl, parseRemarks, RemarkEntry } from '../lib/utils';
 import BatchDetailsView from './BatchDetailsView';
 import WorkflowTimeline from './WorkflowTimeline';
 import WorkflowMultiSelector from './WorkflowMultiSelector';
+import EmployeeSearchableSelect from './EmployeeSearchableSelect';
 
 export interface MCBatchDetailsProps {
   isOpen: boolean;
@@ -43,6 +44,55 @@ export default function MCBatchDetails({
   const [editedData, setEditedData] = useState<any>(data || {});
   const [activeTab, setActiveTab] = useState<'routine' | 'workflow' | 'info' | 'financial' | 'documents'>('routine');
   const [localStages, setLocalStages] = useState<any[]>([]);
+
+  const [newRemarkDate, setNewRemarkDate] = useState<string>(new Date().toISOString().split('T')[0]);
+  const [newRemarkEmployee, setNewRemarkEmployee] = useState<string>("");
+  const [newRemarkText, setNewRemarkText] = useState<string>("");
+  const [isSavingRemark, setIsSavingRemark] = useState(false);
+  const [isAddRemarkOpen, setIsAddRemarkOpen] = useState(false);
+  const [isEmployeeDropdownOpen, setIsEmployeeDropdownOpen] = useState(false);
+
+  const handleAddRemark = async () => {
+    if (!newRemarkDate || !newRemarkEmployee || !newRemarkText.trim()) {
+      alert("Please fill all fields for the remark.");
+      return;
+    }
+    setIsSavingRemark(true);
+    
+    const currentRemarks = parseRemarks(editedData?.['Remarks']);
+    const newRemark: RemarkEntry = {
+      id: Date.now().toString(),
+      date: newRemarkDate,
+      employeeName: newRemarkEmployee,
+      text: newRemarkText.trim()
+    };
+    
+    const updatedRemarks = [newRemark, ...currentRemarks];
+    const remarksStr = JSON.stringify(updatedRemarks);
+
+    const newEditedData = {
+      ...editedData,
+      'Remarks': remarksStr
+    };
+    
+    setEditedData(newEditedData);
+
+    setNewRemarkText("");
+    setNewRemarkEmployee("");
+    setNewRemarkDate(new Date().toISOString().split('T')[0]);
+    setIsAddRemarkOpen(false);
+
+    if (onSave) {
+       try {
+         await onSave(newEditedData, data);
+       } catch (err) {
+         console.error("Failed to save remark", err);
+         alert("Failed to save remark");
+       }
+    }
+
+    setIsSavingRemark(false);
+  };
 
   useEffect(() => {
     if (data) {
@@ -534,106 +584,78 @@ export default function MCBatchDetails({
             className={cn(
               "bg-white flex flex-col overflow-hidden",
               isExpanded
-                ? "w-full lg:w-[380px] xl:w-[440px] shrink-0 border-l border-slate-100 h-full"
+                ? "w-full lg:w-[320px] xl:w-[360px] shrink-0 border-l border-slate-100 h-full"
                 : "flex-1 border-t border-slate-100"
             )}
           >
             {/* Sidebar Header */}
             <div className="bg-slate-50/80 border-b border-slate-200 shrink-0 px-3 py-2.5 flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <Activity className="w-4 h-4 text-teal-600" />
+                <FileText className="w-4 h-4 text-teal-600" />
                 <h3 className="text-xs font-bold text-slate-800 uppercase tracking-wider">
-                  Batch Activities & Workflow
+                  Remarks
                 </h3>
               </div>
-              {(() => {
-                const batchWorkflow = editedData?.['Workflow'] || editedData?.['Publication Workflow'] || data?.['Workflow'] || data?.['Publication Workflow'] || parentCourse?.['Workflow'] || "";
-                const { jobTitle } = parseWorkflowAndStages(batchWorkflow);
-                if (!jobTitle || isEditing) return null;
-                const rawTokens = jobTitle.split(/[,&+]/).map(s => s.trim().toLowerCase()).filter(Boolean);
-                return (
-                  <div className="flex flex-wrap gap-1 max-w-[200px] justify-end">
-                    {rawTokens.map((tok, idx) => {
-                      const wf = parsedWorkflows.find(w => w.id.trim().toLowerCase() === tok || w.title.trim().toLowerCase() === tok);
-                      return (
-                        <span key={idx} className="px-1.5 py-0.5 bg-teal-100/70 text-teal-800 text-[9px] font-bold rounded border border-teal-200/60 uppercase tracking-wider truncate max-w-[120px]">
-                          {wf?.title || tok}
-                        </span>
-                      );
-                    })}
-                  </div>
-                );
-              })()}
+              <button
+                onClick={() => setIsAddRemarkOpen(!isAddRemarkOpen)}
+                className="flex items-center gap-1 text-[11px] font-bold uppercase text-teal-600 hover:text-teal-700 tracking-wider transition-colors cursor-pointer"
+              >
+                <Plus className="w-3.5 h-3.5" /> {isAddRemarkOpen ? "Close" : "Add"}
+              </button>
             </div>
 
             {/* Sidebar Body */}
             <div className="flex-1 overflow-y-auto no-scrollbar p-3 space-y-3">
-              {isEditing ? (
-                <WorkflowMultiSelector
-                  parsedWorkflows={parsedWorkflows}
-                  courseWorkflow={editedData?.['Workflow'] || editedData?.['Publication Workflow'] || data?.['Workflow'] || data?.['Publication Workflow'] || parentCourse?.['Workflow'] || ""}
-                  onWorkflowChange={(serialized, newStages) => {
-                    setLocalStages(newStages);
-                    setEditedData((prev: any) => ({
-                      ...prev,
-                      'Workflow': serialized,
-                      'Publication Workflow': serialized
-                    }));
-                  }}
-                />
-              ) : (() => {
-                const batchWorkflow = editedData?.['Workflow'] || editedData?.['Publication Workflow'] || data?.['Workflow'] || data?.['Publication Workflow'] || parentCourse?.['Workflow'] || "";
-                const { jobTitle, stageAssignments } = parseWorkflowAndStages(batchWorkflow);
-
-                if (!jobTitle) {
-                  return (
-                    <div className="flex flex-col items-center justify-center h-full text-center py-12 px-4">
-                      <Briefcase className="w-7 h-7 text-slate-300 mb-2" />
-                      <span className="text-[12px] font-bold text-slate-500 uppercase tracking-wider">No Workflow Assigned</span>
-                      <p className="text-[11px] text-slate-400 mt-1 leading-relaxed">Assign a Batch/Publication Workflow to see stage assignments and activities.</p>
-                    </div>
-                  );
-                }
-
-                if (localStages.length === 0) {
-                  return (
-                    <div className="flex flex-col items-center justify-center h-full text-center py-12 px-4">
-                      <Briefcase className="w-7 h-7 text-slate-300 mb-2" />
-                      <span className="text-[12px] font-bold text-slate-500 uppercase tracking-wider">No Stages Found</span>
-                      <p className="text-[11px] text-slate-400 mt-1 leading-relaxed">No stages defined for "{jobTitle}".</p>
-                    </div>
-                  );
-                }
-
-                return (
-                  <WorkflowTimeline
-                    stages={localStages}
-                    stageAssignments={stageAssignments}
-                    isEditing={isEditing}
-                    employees={employees || []}
-                    onStageAssignmentChange={(stageId, ids) => {
-                      const updatedAssignments = {
-                        ...stageAssignments,
-                        [stageId]: ids
-                      };
-                      const serialized = serializeWorkflowAndStages(jobTitle, updatedAssignments);
-                      setEditedData((prev: any) => ({
-                        ...prev,
-                        'Workflow': serialized,
-                        'Publication Workflow': serialized
-                      }));
-                    }}
-                    placement="bottom"
-                    jobTitle={jobTitle}
-                    batch={editedData}
-                    courseCode={courseCode}
-                    documents={documents}
-                    onSaveDocument={extraFormProps?.onSaveDocument}
-                    viewType="batch"
-                    onViewFile={extraFormProps?.onViewFile}
+              {isAddRemarkOpen && (
+                <div className="bg-slate-50 border border-slate-200 rounded-lg p-3 space-y-2">
+                  <div className="grid grid-cols-2 gap-2">
+                    <input
+                      type="date"
+                      value={newRemarkDate}
+                      onChange={(e) => setNewRemarkDate(e.target.value)}
+                      className="text-xs border border-slate-200 rounded px-2 py-1 outline-none focus:border-teal-500 w-full"
+                    />
+                    <EmployeeSearchableSelect
+                      employees={employees}
+                      value={newRemarkEmployee}
+                      onChange={setNewRemarkEmployee}
+                      placeholder="Select Employee"
+                    />
+                  </div>
+                  <textarea
+                    value={newRemarkText}
+                    onChange={(e) => setNewRemarkText(e.target.value)}
+                    className="w-full text-xs font-medium text-slate-800 bg-white border border-slate-200 rounded px-3 py-2 focus:border-teal-500 outline-none resize-none"
+                    placeholder="Enter remark..."
+                    rows={3}
                   />
+                  <button
+                    onClick={handleAddRemark}
+                    disabled={isSavingRemark}
+                    className="w-full py-1.5 bg-teal-600 text-white text-xs font-bold rounded hover:bg-teal-700 transition-colors disabled:opacity-50"
+                  >
+                    {isSavingRemark ? "Saving..." : "Save Remark"}
+                  </button>
+                </div>
+              )}
+              {parseRemarks(editedData?.['Remarks']).map((remark: any) => {
+                const emp = employees.find(e => e['Employee Name'] === remark.employeeName);
+                return (
+                  <div key={remark.id} className="bg-white border border-slate-200 rounded-lg p-3 shadow-sm space-y-2">
+                    <div className="flex justify-between items-start gap-2">
+                      <div className="flex items-center gap-2">
+                        {emp && <img src={getPhotoUrl(emp['Photo'])} alt={remark.employeeName} className="w-7 h-7 rounded-full object-cover" />}
+                        <div className="flex flex-col">
+                          <span className="font-bold text-xs text-slate-800">{remark.employeeName}</span>
+                          {emp && <span className="text-[10px] text-slate-500">{emp['Designation']}</span>}
+                        </div>
+                      </div>
+                      <span className="font-mono text-[10px] text-slate-400 shrink-0">{remark.date}</span>
+                    </div>
+                    <p className="text-xs text-slate-700 leading-relaxed">{remark.text}</p>
+                  </div>
                 );
-              })()}
+              })}
             </div>
           </motion.div>
         </motion.div>

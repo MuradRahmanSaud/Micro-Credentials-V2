@@ -2147,6 +2147,7 @@ export default function CourseInsightsDashboard({
                                             <th className="py-2.5 px-3 text-center">End Date</th>
                                             <th className="py-2.5 px-3 text-center font-bold">Enrolled Students</th>
                                             <th className="py-2.5 px-3 text-center font-bold">Status</th>
+                                            <th className="py-2.5 px-3">Remarks</th>
                                           </tr>
                                         </thead>
                                         <tbody className="divide-y divide-slate-100 text-slate-700">
@@ -2159,7 +2160,7 @@ export default function CourseInsightsDashboard({
                                             if (batchesToDisplay.length === 0) {
                                               return (
                                                 <tr>
-                                                  <td colSpan={6} className="text-center py-12 text-slate-400 italic">
+                                                  <td colSpan={7} className="text-center py-12 text-slate-400 italic">
                                                     No batches found for this category.
                                                   </td>
                                                 </tr>
@@ -2205,6 +2206,9 @@ export default function CourseInsightsDashboard({
                                                     )}>
                                                       {status}
                                                     </span>
+                                                  </td>
+                                                  <td className="py-2.5 px-3 text-slate-600 font-medium text-xs">
+                                                    {b["Remarks"] || "—"}
                                                   </td>
                                                 </tr>
                                               );

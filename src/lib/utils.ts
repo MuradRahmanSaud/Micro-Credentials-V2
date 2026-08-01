@@ -113,6 +113,32 @@ export function getDbOverridesHeaders(): Record<string, string> {
   return {};
 }
 
+export interface RemarkEntry {
+  id: string;
+  date: string;
+  employeeName: string;
+  text: string;
+}
+
+export const parseRemarks = (remarksStr: any): RemarkEntry[] => {
+  if (!remarksStr) return [];
+  if (typeof remarksStr === 'string') {
+    try {
+      const parsed = JSON.parse(remarksStr);
+      if (Array.isArray(parsed)) return parsed;
+    } catch (e) {
+      return [{
+        id: 'legacy',
+        date: new Date().toISOString().split('T')[0],
+        employeeName: 'System',
+        text: remarksStr
+      }];
+    }
+  }
+  if (Array.isArray(remarksStr)) return remarksStr;
+  return [];
+};
+
 export function formatToMmmDdYyyy(val: any): string {
   if (val == null || typeof val === "number" || typeof val === "boolean") {
     return String(val ?? "");

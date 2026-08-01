@@ -500,6 +500,13 @@ export const MCCourseBatchContent: React.FC<MCCourseBatchContentProps> = ({
                     </div>
                   </div>
 
+                  {/* Card Remarks */}
+                  {localBatch["Remarks"] && (
+                    <div className="text-[10px] text-slate-600 truncate border-t border-slate-100 pt-1">
+                      <span className="font-bold text-slate-500">Remarks:</span> {localBatch["Remarks"]}
+                    </div>
+                  )}
+
                   {/* Card Bottom Row */}
                   <div className="flex items-center justify-between text-[10px] pt-0.5 gap-1">
                     <div className="flex items-center gap-1 text-teal-800 font-semibold bg-teal-100/70 px-1.5 py-0.5 rounded text-[10px] shrink-0">
