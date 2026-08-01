@@ -1677,12 +1677,30 @@ export default function MCCourseDetails({
                               </h2>
                             </div>
 
-                            {/* Info Row: Status, Duration, Classes */}
+                            {/* Info Row: Status, Duration, Classes, Link */}
                             <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-1 text-white/80">
                               <div className="flex items-center gap-1.5">
                                 <span className="text-[8px] font-medium uppercase tracking-widest opacity-60">Status</span>
                                 <span className="text-[11px] font-medium uppercase">{editedData?.['Publication Status'] || data?.['Publication Status'] || '—'}</span>
                               </div>
+                              {(editedData?.['Published Link'] || data?.['Published Link'] || data?.['Publication Link']) && (
+                                <div className="flex items-center gap-1.5">
+                                  <span className="text-[8px] font-medium uppercase tracking-widest opacity-60">Link</span>
+                                  <a
+                                    href={
+                                      String(editedData?.['Published Link'] || data?.['Published Link'] || data?.['Publication Link']).startsWith("http")
+                                        ? String(editedData?.['Published Link'] || data?.['Published Link'] || data?.['Publication Link'])
+                                        : `https://${editedData?.['Published Link'] || data?.['Published Link'] || data?.['Publication Link']}`
+                                    }
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="text-[11px] font-medium text-teal-200 hover:text-white underline flex items-center gap-1 truncate max-w-[200px]"
+                                  >
+                                    <Globe className="w-3 h-3 shrink-0" />
+                                    <span className="truncate">{editedData?.['Published Link'] || data?.['Published Link'] || data?.['Publication Link']}</span>
+                                  </a>
+                                </div>
+                              )}
                               <div className="flex items-center gap-1.5">
                                 <span className="text-[8px] font-medium uppercase tracking-widest opacity-60">Duration</span>
                                 <span className="text-[11px] font-medium uppercase">

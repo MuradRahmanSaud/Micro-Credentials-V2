@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect, useCallback, useRef, forwardRef, useImperativeHandle } from "react";
-import { Search, Pencil, Trash2, RefreshCw, Plus, Filter, CheckCircle2, AlertCircle, Download, Type, RotateCcw, User } from "lucide-react";
+import { Search, Pencil, Trash2, RefreshCw, Plus, Filter, CheckCircle2, AlertCircle, Download, Type, RotateCcw, User, Globe } from "lucide-react";
 import { cn, formatToMmmDdYyyy, isBatchRunning, getPhotoUrl, resolveNamesOrIdsToIds } from "../lib/utils";
 import { motion, AnimatePresence } from "motion/react";
 import ConfirmModal from "./ConfirmModal";
@@ -933,6 +933,23 @@ export default forwardRef(function Table({
                                 <span className="font-medium text-gray-900">{formatCellValue(header, row[header])}</span>
                                 <span className="text-[10px] text-gray-500 font-normal leading-tight">{row["Designation"]}</span>
                               </div>
+                            ) : (headerLower === "published link" || headerLower === "publication link") ? (
+                              (() => {
+                                const url = String(row[header] || "").trim();
+                                if (!url) return <span className="text-gray-400 text-[10px] italic">—</span>;
+                                return (
+                                  <a
+                                    href={url.startsWith("http") ? url : `https://${url}`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    onClick={(e) => e.stopPropagation()}
+                                    className="text-teal-600 hover:text-teal-800 font-medium hover:underline inline-flex items-center gap-1 max-w-[160px] truncate text-xs"
+                                  >
+                                    <Globe className="w-3 h-3 shrink-0" />
+                                    <span className="truncate">{url}</span>
+                                  </a>
+                                );
+                              })()
                             ) : (headerLower === "status" || headerLower === "activity status" || headerLower === "publication status" || headerLower === "published status") && entityName === "Course" ? (
                               (() => {
                                 const status = String(row[header] || "");

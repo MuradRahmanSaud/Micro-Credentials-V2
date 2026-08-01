@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
-import { Users, Info, Target, Award, TrendingUp, BookOpen, Briefcase, UserCheck, GitMerge, FileText, Coins, Plus, X, Eye, Check, Trash2, Upload, Loader2, Pencil, Search, ChevronDown } from 'lucide-react';
+import { Users, Info, Target, Award, TrendingUp, BookOpen, Briefcase, UserCheck, GitMerge, FileText, Coins, Plus, X, Eye, Check, Trash2, Upload, Loader2, Pencil, Search, ChevronDown, Globe } from 'lucide-react';
 import axios from 'axios';
 import { FOLDER_LOCATIONS, getFileLocationPrefix } from '../FolderLocation';
 import EmployeeMultiSelect from './EmployeeMultiSelect';
@@ -857,8 +857,12 @@ export const MCCourseInfoContent: React.FC<MCCourseInfoContentProps> = ({
                     currentPubStatus = getPublicationStatus(courseObj, courseOfferList);
                   }
 
+                  const publishedLink = editedData?.["Published Link"] !== undefined
+                    ? editedData["Published Link"]
+                    : (data?.["Published Link"] || data?.["Publication Link"] || data?.["Published_Link"] || "");
+
                   return (
-                    <div className="bg-white rounded-xl border border-slate-200/80 p-4 shadow-xs space-y-2">
+                    <div className="bg-white rounded-xl border border-slate-200/80 p-4 shadow-xs space-y-3">
                       <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block">
                         Publication Status
                       </span>
@@ -887,6 +891,26 @@ export const MCCourseInfoContent: React.FC<MCCourseInfoContentProps> = ({
                         )}>
                           {currentPubStatus}
                         </span>
+                      </div>
+
+                      {/* Published Link Row */}
+                      <div className="pt-2.5 border-t border-slate-100 flex items-center justify-between gap-2">
+                        <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+                          Published Link:
+                        </span>
+                        {publishedLink ? (
+                          <a
+                            href={publishedLink.startsWith("http") ? publishedLink : `https://${publishedLink}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-xs font-semibold text-teal-600 hover:text-teal-800 hover:underline flex items-center gap-1.5 truncate max-w-[260px]"
+                          >
+                            <Globe className="w-3.5 h-3.5 shrink-0 text-teal-600" />
+                            <span className="truncate">{publishedLink}</span>
+                          </a>
+                        ) : (
+                          <span className="text-xs text-slate-400 italic">No published link</span>
+                        )}
                       </div>
                     </div>
                   );
@@ -1301,29 +1325,47 @@ export const MCCourseInfoContent: React.FC<MCCourseInfoContentProps> = ({
 
                   const canBePublished = evaluatedStatus === "Ready to Publish" || String(selectedPubStatus).toLowerCase() === "published";
 
+                  const publishedLink = editedData?.["Published Link"] !== undefined
+                    ? editedData["Published Link"]
+                    : (data?.["Published Link"] ?? data?.["Publication Link"] ?? data?.["Published_Link"] ?? "");
+
                   return (
-                    <div className="space-y-1">
-                      <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest block">
-                        Publication Status
-                      </label>
-                      {canBePublished ? (
-                        <select
-                          value={String(selectedPubStatus).toLowerCase() === "published" ? "Published" : "Ready to Publish"}
-                          onChange={(e) => {
-                            handleInputChange("Publication Status", e.target.value);
-                            handleInputChange("Published Status", e.target.value);
+                    <div className="space-y-3 pt-2 border-t border-slate-100">
+                      <div className="space-y-1">
+                        <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest block">
+                          Publication Status
+                        </label>
+                        {canBePublished ? (
+                          <select
+                            value={String(selectedPubStatus).toLowerCase() === "published" ? "Published" : "Ready to Publish"}
+                            onChange={(e) => {
+                              handleInputChange("Publication Status", e.target.value);
+                              handleInputChange("Published Status", e.target.value);
+                            }}
+                            className="w-full text-xs font-bold text-slate-800 bg-white border border-slate-200 rounded-lg px-3 py-2 focus:border-teal-500 outline-none uppercase cursor-pointer"
+                          >
+                            <option value="Ready to Publish">Ready to Publish</option>
+                            <option value="Published">Published</option>
+                          </select>
+                        ) : (
+                          <div className="w-full text-xs font-bold text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 flex items-center justify-between">
+                            <span>UNDER REVIEW</span>
+                            <span className="text-[10px] font-normal text-amber-600">Complete required fields to reach "Ready to Publish"</span>
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="space-y-1">
+                        <FloatingInput
+                          label="Published Link"
+                          type="text"
+                          placeholder="https://..."
+                          value={publishedLink}
+                          onChange={(e: any) => {
+                            handleInputChange("Published Link", e.target.value);
                           }}
-                          className="w-full text-xs font-bold text-slate-800 bg-white border border-slate-200 rounded-lg px-3 py-2 focus:border-teal-500 outline-none uppercase cursor-pointer"
-                        >
-                          <option value="Ready to Publish">Ready to Publish</option>
-                          <option value="Published">Published</option>
-                        </select>
-                      ) : (
-                        <div className="w-full text-xs font-bold text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 flex items-center justify-between">
-                          <span>UNDER REVIEW</span>
-                          <span className="text-[10px] font-normal text-amber-600">Complete required fields to reach "Ready to Publish"</span>
-                        </div>
-                      )}
+                        />
+                      </div>
                     </div>
                   );
                 })()}

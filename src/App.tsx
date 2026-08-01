@@ -293,7 +293,7 @@ export default function App() {
     localStorageKey: "course_data",
     fallbackHeaders: [
       "Course Code", "Course Title", "Banner", "Mode", "Duration", "Class",
-      "Course Fee", "Student Size", "Status", "Publication Status", "Published Status", "Workflow",
+      "Course Fee", "Student Size", "Status", "Publication Status", "Published Status", "Published Link", "Workflow",
       "Industry Expert", "Discount",
       "Remarks", "Date", "Learning Outcome", "Industry Demand", "Target Audience", "Aligned Course name", "Proposal", "Objective"
     ]
