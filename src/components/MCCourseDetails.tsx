@@ -1605,7 +1605,7 @@ export default function MCCourseDetails({
                         </div>
 
                         <div className="flex items-center gap-2">
-                          {!isExpanded && !isEditing && hasCourseInfo && (
+                          {!isEditing && hasCourseInfo && (
                             <div className="flex items-center gap-1.5">
                               <button 
                                 onClick={() => setIsEditing(true)} 
@@ -1624,7 +1624,7 @@ export default function MCCourseDetails({
                             </div>
                           )}
 
-                          {!isExpanded && isEditing && (
+                          {isEditing && (
                             <div className="flex items-center gap-1.5">
                               <button 
                                 onClick={() => {
@@ -1791,58 +1791,6 @@ export default function MCCourseDetails({
                                   )}
                                 >
                                   <ChevronRight className="w-3.5 h-3.5" />
-                                </button>
-                              </div>
-                            )}
-                            {!isEditing && hasCourseInfo && (
-                              <div className="flex items-center gap-1.5">
-                                <button 
-                                  onClick={() => setIsEditing(true)} 
-                                  className="p-1 rounded-md bg-white border border-slate-200 text-slate-600 hover:text-teal-600 hover:bg-slate-100 transition-all shadow-2xs cursor-pointer flex items-center justify-center"
-                                  title="Edit Course"
-                                >
-                                  <Edit2 className="w-3.5 h-3.5" />
-                                </button>
-                                <button 
-                                  onClick={onClose} 
-                                  className="p-1 rounded-md bg-white border border-slate-200 text-slate-600 hover:text-red-600 hover:bg-slate-100 transition-all shadow-2xs cursor-pointer flex items-center justify-center"
-                                  title="Close"
-                                >
-                                  <X className="w-3.5 h-3.5" />
-                                </button>
-                              </div>
-                            )}
-
-                            {isEditing && (
-                              <div className="flex items-center gap-1.5">
-                                <button 
-                                  onClick={() => {
-                                    setIsEditing(false);
-                                    setEditedData(data);
-                                    setEditedBatches({});
-                                    setEditedDocs({});
-                                    setLocalNewBatches([]);
-                                    setLocalNewDocs([]);
-                                    setInlineEditingBatchKey(null);
-                                    if (data && data["Workflow"]) {
-                                        try {
-                                            const parsed = JSON.parse(data["Workflow"]);
-                                            if (Array.isArray(parsed)) setLocalStages(parsed);
-                                        } catch(e) {}
-                                    }
-                                  }}
-                                  disabled={isSubmitting}
-                                  className="px-2 py-0.5 text-[10.5px] font-semibold text-slate-600 bg-white hover:bg-slate-50 border border-slate-200 rounded transition-all uppercase disabled:opacity-50 cursor-pointer h-6 flex items-center"
-                                >
-                                  Cancel
-                                </button>
-                                <button 
-                                  onClick={handleSave} 
-                                  disabled={isSubmitting}
-                                  className="flex items-center gap-1 px-2.5 py-0.5 bg-teal-600 hover:bg-teal-700 text-white rounded text-[10.5px] font-bold uppercase tracking-wider transition-all disabled:opacity-50 shadow-xs cursor-pointer h-6"
-                                >
-                                  {isSubmitting ? <Loader2 className="w-2.5 h-2.5 animate-spin" /> : <Save className="w-2.5 h-2.5" />}
-                                  Save
                                 </button>
                               </div>
                             )}

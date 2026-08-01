@@ -340,33 +340,6 @@ export default function MCBatchDetails({
             </div>
 
             <div className="flex items-center gap-2">
-              {batchesList.length > 1 && (
-                <div className="flex items-center gap-1 bg-black/40 hover:bg-black/60 text-white backdrop-blur-xs border border-white/15 rounded-full px-2 py-0.5 text-xs shadow-xs">
-                  <button
-                    onClick={(e) => { e.stopPropagation(); handleNavigateBatch('prev'); }}
-                    disabled={currentIndex <= 0}
-                    title={currentIndex <= 0 ? "First Batch" : "Previous Batch"}
-                    className={cn(
-                      "p-0.5 transition-colors",
-                      currentIndex <= 0 ? "opacity-30 cursor-not-allowed" : "hover:text-teal-300 cursor-pointer"
-                    )}
-                  >
-                    <ChevronLeft className="w-3.5 h-3.5" />
-                  </button>
-                  <button
-                    onClick={(e) => { e.stopPropagation(); handleNavigateBatch('next'); }}
-                    disabled={currentIndex >= batchesList.length - 1}
-                    title={currentIndex >= batchesList.length - 1 ? "Last Batch" : "Next Batch"}
-                    className={cn(
-                      "p-0.5 transition-colors",
-                      currentIndex >= batchesList.length - 1 ? "opacity-30 cursor-not-allowed" : "hover:text-teal-300 cursor-pointer"
-                    )}
-                  >
-                    <ChevronRight className="w-3.5 h-3.5" />
-                  </button>
-                </div>
-              )}
-
               {!isEditing ? (
                 <div className="flex items-center gap-1.5">
                   <button
