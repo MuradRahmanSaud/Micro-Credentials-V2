@@ -907,7 +907,7 @@ export default forwardRef(function Table({
                             {renderedCustomCell !== undefined ? renderedCustomCell : formatCellValue(header, row[header])}
                           </div>
                         ) : (
-                          <div className={cn("flex items-center gap-1.5", ["employee id", "course code", "batch number", "start date", "end date", "student", "mobile", "ip-ext", "status", "activity status", "publication status", "published status", "mode", "duration", "class", "no. of class", "course fee", "student size", "enrolled", "discount", "expenses", "net profit", "batches", "profit %", "assigned date", "deadline"].includes(headerLower) ? "justify-center w-full" : "")}>
+                          <div className={cn("flex items-center gap-1.5", ["employee id", "course code", "batch number", "start date", "end date", "student", "mobile", "ip-ext", "status", "activity status", "publication status", "published status", "mode", "total batch", "duration", "class", "no. of class", "course fee", "student size", "enrolled", "discount", "expenses", "net profit", "batches", "profit %", "assigned date", "deadline"].includes(headerLower) ? "justify-center w-full" : "")}>
                             {renderedCustomCell !== undefined ? (
                               renderedCustomCell
                             ) : (headerLower === "instractor" || headerLower === "instructor") ? (
@@ -950,6 +950,20 @@ export default forwardRef(function Table({
                                 <span className="font-medium text-gray-900">{formatCellValue(header, row[header])}</span>
                                 <span className="text-[10px] text-gray-500 font-normal leading-tight">{row["Designation"]}</span>
                               </div>
+                            ) : (headerLower === "total batch" || headerLower === "batches") ? (
+                              (() => {
+                                const count = parseInt(String(row[header] || "0"), 10) || 0;
+                                return (
+                                  <span className={cn(
+                                    "inline-flex items-center justify-center px-2 py-0.5 rounded-full text-[11px] font-bold font-mono border",
+                                    count > 0 
+                                      ? "bg-teal-50 text-teal-800 border-teal-200/80" 
+                                      : "bg-slate-100 text-slate-500 border-slate-200"
+                                  )}>
+                                    {count} {count === 1 ? "Batch" : "Batches"}
+                                  </span>
+                                );
+                              })()
                             ) : (headerLower === "published link" || headerLower === "publication link") ? (
                               (() => {
                                 const url = String(row[header] || "").trim();

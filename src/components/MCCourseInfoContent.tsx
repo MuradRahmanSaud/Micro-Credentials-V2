@@ -808,7 +808,7 @@ export const MCCourseInfoContent: React.FC<MCCourseInfoContentProps> = ({
                   </div>
 
                   {/* Metrics Grid */}
-                  <div className="pt-3 border-t border-slate-100 grid grid-cols-2 sm:grid-cols-5 gap-3 text-center">
+                  <div className="pt-3 border-t border-slate-100 grid grid-cols-2 sm:grid-cols-6 gap-3 text-center">
                     <div>
                       <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block">Duration</span>
                       <span className="text-xs font-bold text-slate-800 font-mono block mt-0.5">
@@ -819,6 +819,12 @@ export const MCCourseInfoContent: React.FC<MCCourseInfoContentProps> = ({
                       <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block">Class</span>
                       <span className="text-xs font-bold text-slate-800 font-mono block mt-0.5">
                         {editedData?.["Class"] ?? editedData?.["No. of Class"] ?? data?.["Class"] ?? data?.["No. of Class"] ?? "—"}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block">Credit</span>
+                      <span className="text-xs font-bold text-slate-800 font-mono block mt-0.5">
+                        {editedData?.["Credit"] ?? data?.["Credit"] ?? "—"}
                       </span>
                     </div>
                     <div>
@@ -1203,56 +1209,14 @@ export const MCCourseInfoContent: React.FC<MCCourseInfoContentProps> = ({
 
             {infoVerticalTab === 'basic' && (
               <>
-                <div className="space-y-1.5">
-                  <div className="flex items-center gap-2">
-                    <div className="flex-1">
-                      <FloatingInput
-                        label="Banner Image URL"
-                        type="text"
-                        value={editedData?.["Banner"] !== undefined ? editedData["Banner"] : (data?.["Banner"] || "")}
-                        onChange={(e: any) => handleInputChange("Banner", e.target.value)}
-                      />
-                    </div>
-                    <label
-                      className={`flex items-center gap-1.5 px-3 py-2.5 bg-teal-50 hover:bg-teal-100 text-teal-700 text-xs font-bold rounded-lg border border-teal-200 cursor-pointer transition-colors shrink-0 shadow-xs ${isUploadingBanner ? 'opacity-60 cursor-not-allowed' : ''}`}
-                      title="Upload Banner Image"
-                    >
-                      {isUploadingBanner ? (
-                        <Loader2 className="w-4 h-4 animate-spin text-teal-600" />
-                      ) : (
-                        <Upload className="w-4 h-4 text-teal-600" />
-                      )}
-                      <span className="hidden sm:inline">{isUploadingBanner ? "Uploading..." : "Upload Banner"}</span>
-                      <input
-                        type="file"
-                        accept="image/*"
-                        className="hidden"
-                        disabled={isUploadingBanner}
-                        onChange={handleBannerUpload}
-                      />
-                    </label>
-                  </div>
-                  {(editedData?.["Banner"] || data?.["Banner"]) && (
-                    <div className="flex items-center gap-2 px-1 text-slate-500 text-[11px]">
-                      <span className="font-medium">Current Banner:</span>
-                      <a
-                        href={editedData?.["Banner"] !== undefined ? editedData["Banner"] : data?.["Banner"]}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-teal-600 hover:text-teal-800 font-semibold inline-flex items-center gap-1"
-                      >
-                        <Eye className="w-3 h-3" /> View Image
-                      </a>
-                    </div>
-                  )}
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                {/* 1. Top Row: Date, Course Code, Course Title */}
+                <div className="grid grid-cols-1 md:grid-cols-12 gap-3">
                   <FloatingInput
                     label="Date"
                     type="date"
                     value={editedData?.["Date"] !== undefined ? editedData["Date"] : (data?.["Date"] || "")}
                     onChange={(e: any) => handleInputChange("Date", e.target.value)}
+                    className="md:col-span-2"
                   />
 
                   <FloatingInput
@@ -1260,7 +1224,7 @@ export const MCCourseInfoContent: React.FC<MCCourseInfoContentProps> = ({
                     type="text"
                     value={editedData?.["Course Code"] !== undefined ? editedData["Course Code"] : (data?.["Course Code"] || "")}
                     onChange={(e: any) => handleInputChange("Course Code", e.target.value)}
-                    className="font-bold uppercase"
+                    className="font-bold uppercase md:col-span-3"
                   />
 
                   <FloatingInput
@@ -1268,53 +1232,110 @@ export const MCCourseInfoContent: React.FC<MCCourseInfoContentProps> = ({
                     type="text"
                     value={editedData?.["Course Title"] !== undefined ? editedData["Course Title"] : (data?.["Course Title"] || "")}
                     onChange={(e: any) => handleInputChange("Course Title", e.target.value)}
+                    className="md:col-span-7"
                   />
                 </div>
 
+                {/* 2. Middle Row: Left = Banner upload button and URL input field; Right = Duration, Class, Credit, Student Size, Course Fee, Mode */}
                 {(() => {
                   const clsHead = headers?.find(h => h === "Class" || h === "No. of Class") || ("No. of Class" in (data || {}) ? "No. of Class" : "Class");
                   const stdHead = headers?.find(h => h === "Student Size" || h === "Student" || h.toLowerCase().includes("student") || h.toLowerCase().includes("size")) || ("Student" in (data || {}) ? "Student" : "Student Size");
                   
                   return (
-                    <div className="space-y-2 pt-1 border-t border-slate-100">
-                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block">Duration / Class / Student / Fee / Mode</span>
-                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                        <FloatingInput
-                          label="Duration"
-                          type="number"
-                          value={editedData?.["Duration"] !== undefined ? editedData["Duration"] : (data?.["Duration"] ?? "")}
-                          onChange={(e: any) => handleInputChange("Duration", e.target.value)}
-                        />
-                        <FloatingInput
-                          label={clsHead}
-                          type="number"
-                          value={editedData?.[clsHead] !== undefined ? editedData[clsHead] : (editedData?.["Class"] !== undefined ? editedData["Class"] : (data?.[clsHead] ?? data?.["Class"] ?? ""))}
-                          onChange={(e: any) => handleInputChange(clsHead, e.target.value)}
-                        />
-                        <FloatingInput
-                          label={stdHead}
-                          type="number"
-                          value={editedData?.[stdHead] !== undefined ? editedData[stdHead] : (editedData?.["Student Size"] !== undefined ? editedData["Student Size"] : (data?.[stdHead] ?? data?.["Student Size"] ?? ""))}
-                          onChange={(e: any) => handleInputChange(stdHead, e.target.value)}
-                        />
-                        <FloatingInput
-                          label="Course Fee"
-                          type="number"
-                          prefix="৳"
-                          value={editedData?.["Course Fee"] !== undefined ? editedData["Course Fee"] : (data?.["Course Fee"] ?? "")}
-                          onChange={(e: any) => handleInputChange("Course Fee", e.target.value)}
-                        />
-                        <ModeMultiSelect
-                          label="Mode"
-                          value={editedData?.["Mode"] !== undefined ? editedData["Mode"] : (data?.["Mode"] ?? "")}
-                          onChange={(val: string) => handleInputChange("Mode", val)}
-                        />
+                    <div className="grid grid-cols-1 lg:grid-cols-12 gap-3 pt-2 border-t border-slate-100 items-start">
+                      {/* Left: Banner URL & Upload Button */}
+                      <div className="lg:col-span-5 space-y-1.5 bg-slate-50/70 p-2.5 rounded-xl border border-slate-200/60">
+                        <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest block">Banner Image</span>
+                        <div className="flex items-center gap-2">
+                          <div className="flex-1">
+                            <FloatingInput
+                              label="Banner Image URL"
+                              type="text"
+                              value={editedData?.["Banner"] !== undefined ? editedData["Banner"] : (data?.["Banner"] || "")}
+                              onChange={(e: any) => handleInputChange("Banner", e.target.value)}
+                            />
+                          </div>
+                          <label
+                            className={`flex items-center gap-1.5 px-3 py-2.5 bg-teal-50 hover:bg-teal-100 text-teal-700 text-xs font-bold rounded-lg border border-teal-200 cursor-pointer transition-colors shrink-0 shadow-xs ${isUploadingBanner ? 'opacity-60 cursor-not-allowed' : ''}`}
+                            title="Upload Banner Image"
+                          >
+                            {isUploadingBanner ? (
+                              <Loader2 className="w-4 h-4 animate-spin text-teal-600" />
+                            ) : (
+                              <Upload className="w-4 h-4 text-teal-600" />
+                            )}
+                            <span className="hidden sm:inline">{isUploadingBanner ? "Uploading..." : "Upload Banner"}</span>
+                            <input
+                              type="file"
+                              accept="image/*"
+                              className="hidden"
+                              disabled={isUploadingBanner}
+                              onChange={handleBannerUpload}
+                            />
+                          </label>
+                        </div>
+                        {(editedData?.["Banner"] || data?.["Banner"]) && (
+                          <div className="flex items-center gap-2 px-1 text-slate-500 text-[11px]">
+                            <span className="font-medium">Current Banner:</span>
+                            <a
+                              href={editedData?.["Banner"] !== undefined ? editedData["Banner"] : data?.["Banner"]}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-teal-600 hover:text-teal-800 font-semibold inline-flex items-center gap-1"
+                            >
+                              <Eye className="w-3 h-3" /> View Image
+                            </a>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Right: Duration, Class, Credit, Student Size, Course Fee, Mode */}
+                      <div className="lg:col-span-7 space-y-1.5 bg-slate-50/70 p-2.5 rounded-xl border border-slate-200/60">
+                        <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest block">Duration / Class / Credit / Student / Fee / Mode</span>
+                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                          <FloatingInput
+                            label="Duration"
+                            type="number"
+                            value={editedData?.["Duration"] !== undefined ? editedData["Duration"] : (data?.["Duration"] ?? "")}
+                            onChange={(e: any) => handleInputChange("Duration", e.target.value)}
+                          />
+                          <FloatingInput
+                            label={clsHead}
+                            type="number"
+                            value={editedData?.[clsHead] !== undefined ? editedData[clsHead] : (editedData?.["Class"] !== undefined ? editedData["Class"] : (data?.[clsHead] ?? data?.["Class"] ?? ""))}
+                            onChange={(e: any) => handleInputChange(clsHead, e.target.value)}
+                          />
+                          <FloatingInput
+                            label="Credit"
+                            type="number"
+                            value={editedData?.["Credit"] !== undefined ? editedData["Credit"] : (data?.["Credit"] ?? "")}
+                            onChange={(e: any) => handleInputChange("Credit", e.target.value)}
+                          />
+                          <FloatingInput
+                            label={stdHead}
+                            type="number"
+                            value={editedData?.[stdHead] !== undefined ? editedData[stdHead] : (editedData?.["Student Size"] !== undefined ? editedData["Student Size"] : (data?.[stdHead] ?? data?.["Student Size"] ?? ""))}
+                            onChange={(e: any) => handleInputChange(stdHead, e.target.value)}
+                          />
+                          <FloatingInput
+                            label="Course Fee"
+                            type="number"
+                            prefix="৳"
+                            value={editedData?.["Course Fee"] !== undefined ? editedData["Course Fee"] : (data?.["Course Fee"] ?? "")}
+                            onChange={(e: any) => handleInputChange("Course Fee", e.target.value)}
+                          />
+                          <ModeMultiSelect
+                            label="Mode"
+                            value={editedData?.["Mode"] !== undefined ? editedData["Mode"] : (data?.["Mode"] ?? "")}
+                            onChange={(val: string) => handleInputChange("Mode", val)}
+                          />
+                        </div>
                       </div>
                     </div>
                   );
                 })()}
 
-                {/* Publication Status Edit Control */}
+                {/* 3. Bottom Row: Publication Status */}
                 {(() => {
                   const courseObj = editedData && Object.keys(editedData).length > 0 ? editedData : data;
                   const courseOfferList = extraFormProps?.courseOfferData || [];

@@ -115,6 +115,32 @@ const formatDateToMmmDdYyyy = (dateVal: any): string => {
   return `${mmm} ${dd}, ${yyyy}`;
 };
 
+// Helper to check exact match between an aligned course item and a target course
+function isExactCourseMatch(
+  p: { pId?: string; courseCode?: string; courseTitle?: string },
+  targetPid: string,
+  targetCode: string,
+  targetTitle: string
+): boolean {
+  const pPid = String(p.pId || "").trim().toLowerCase();
+  const pCode = String(p.courseCode || "").trim().toLowerCase();
+  const pTitle = String(p.courseTitle || "").trim().toLowerCase();
+
+  const tPid = String(targetPid || "").trim().toLowerCase();
+  const tCode = String(targetCode || "").trim().toLowerCase();
+  const tTitle = String(targetTitle || "").trim().toLowerCase();
+
+  if (!pCode && !pTitle) return false;
+
+  const pidMatches = pPid ? (pPid === tPid) : true;
+  if (!pidMatches) return false;
+
+  const codeMatches = pCode ? (tCode === pCode) : true;
+  const titleMatches = pTitle ? (tTitle === pTitle) : true;
+
+  return codeMatches && titleMatches;
+}
+
 export default function CourseInsightsDashboard({
   courseData = [],
   mcBatchData = [],
@@ -261,6 +287,7 @@ export default function CourseInsightsDashboard({
       const title = String(course["Course Title"] || course["Course Name"] || "Unnamed Course").trim();
       const mode = String(course["Mode"] || "Offline").trim();
       const duration = String(course["Duration"] || "-").trim();
+      const credit = String(course["Credit"] || course["credit"] || "-").trim();
       const classesCount = String(course["Class"] || "-").trim();
       const industryExpert = String(course["Industry Expert"] || course["Industry Expart"] || "-").trim();
       const industryDemand = String(course["Industry Demand"] || "-").trim();
@@ -341,16 +368,14 @@ export default function CourseInsightsDashboard({
         course["Aligned_Course"] ||
         course["Aligned Program"] ||
         course["Program Aligned"] ||
-        course["Aligned_Program"] ||
-        course["P-ID"] ||
-        course["PID"];
+        course["Aligned_Program"] || "";
 
       if (!isValidAlignedValue(alignedCourseVal)) {
         alignedCourseVal = null;
         Object.keys(course).forEach(k => {
           if (!alignedCourseVal) {
             const kl = k.toLowerCase();
-            if (kl.includes("aligned") || kl.includes("p-id")) {
+            if (kl.includes("aligned")) {
               const val = course[k];
               if (isValidAlignedValue(val)) {
                 alignedCourseVal = val;
@@ -435,6 +460,7 @@ export default function CourseInsightsDashboard({
     const mcCoursesGrouped: Array<{
       code: string;
       title: string;
+      credit: string;
       duration: string;
       fee: number;
       alignedItems: Array<{ courseCode: string; courseTitle: string }>;
@@ -453,15 +479,13 @@ export default function CourseInsightsDashboard({
            origCourse["Aligned_Course"] ||
            origCourse["Aligned Program"] ||
            origCourse["Program Aligned"] ||
-           origCourse["Aligned_Program"] ||
-           origCourse["P-ID"] ||
-           origCourse["PID"] ||
-           origCourse["Program Name"] ||
-           origCourse["Program ID"] ||
-           origCourse["Program"] || "")
+           origCourse["Aligned_Program"] || "")
         : "";
 
+      if (!rawAligned) return;
+
       const parsed = parseAlignedCourses(rawAligned, courseOfferData);
+      if (parsed.length === 0) return;
       
       // Determine if this MC Course aligns to any course within the selected program
       const alignedToSelectedProgram = courseOfferData.filter(row => {
@@ -472,20 +496,17 @@ export default function CourseInsightsDashboard({
         const rowTitle = String(row["Course Title"] || "").trim().toLowerCase();
 
         // Match strictly through Aligned Courses parsed array
-        return parsed.some(p => {
-          const pCode = String(p.courseCode || "").trim().toLowerCase();
-          const pTitle = String(p.courseTitle || "").trim().toLowerCase();
-          const pPid = p.pId ? p.pId.toLowerCase().trim() : "";
-          
-          const isPidMatch = pPid ? (pPid === pidLower) : true;
-          const isCourseMatch = (pCode && pCode === rowCode) || (pTitle && pTitle === rowTitle);
-          return isPidMatch && isCourseMatch;
-        });
+        return parsed.some(p => isExactCourseMatch(p, pidLower, rowCode, rowTitle));
       });
 
-      const hasDirectPidAlignment = parsed.some(p => p.pId && p.pId.toLowerCase().trim() === pidLower);
+      const hasDirectCourseAlignment = parsed.some(p => {
+        const pPid = p.pId ? p.pId.toLowerCase().trim() : "";
+        const pCode = String(p.courseCode || "").trim();
+        const pTitle = String(p.courseTitle || "").trim();
+        return (pPid === pidLower) && (pCode !== "" || pTitle !== "");
+      });
 
-      if (alignedToSelectedProgram.length > 0 || hasDirectPidAlignment) {
+      if (alignedToSelectedProgram.length > 0 || hasDirectCourseAlignment) {
         const alignedItems: Array<{ courseCode: string; courseTitle: string }> = [];
         
         alignedToSelectedProgram.forEach(o => {
@@ -524,9 +545,13 @@ export default function CourseInsightsDashboard({
           }
         });
 
+        const origCourse = courseData.find(c => String(c["Course Code"] || c["id"] || "").trim() === mc.code);
+        const credit = origCourse ? String(origCourse["Credit"] || origCourse["credit"] || "—").trim() : (mc.credit || "—");
+
         mcCoursesGrouped.push({
           code: mc.code,
           title: mc.title,
+          credit: credit || "—",
           duration: mc.duration || "—",
           fee: mc.fee,
           alignedItems,
@@ -563,18 +588,7 @@ export default function CourseInsightsDashboard({
           seenCode.add(key);
           
           const isAligned = mcCoursesGrouped.some(mc => 
-            mc.parsedAligned.some(p => {
-              const pCode = String(p.courseCode || "").trim().toLowerCase();
-              const pTitle = String(p.courseTitle || "").trim().toLowerCase();
-              const pPid = String(p.pId || "").trim().toLowerCase();
-              
-              const isPidMatch = pPid ? (pPid === pidLower) : true;
-              const isCourseMatch = 
-                (pCode && pCode === courseCode.toLowerCase()) || 
-                (pTitle && pTitle === courseTitle.toLowerCase());
-                
-              return isPidMatch && isCourseMatch;
-            })
+            mc.parsedAligned.some(p => isExactCourseMatch(p, pidLower, courseCode, courseTitle))
           );
 
           programCourses.push({
@@ -631,28 +645,56 @@ export default function CourseInsightsDashboard({
              origCourse["Aligned_Course"] ||
              origCourse["Aligned Program"] ||
              origCourse["Program Aligned"] ||
-             origCourse["Aligned_Program"] ||
-             origCourse["P-ID"] ||
-             origCourse["PID"] || "")
+             origCourse["Aligned_Program"] || "")
           : "";
+
+        if (!rawAligned) return false;
 
         const parsed = parseAlignedCourses(rawAligned, courseOfferData);
         
-        // Match if any parsed aligned item has pId === pid
-        // or if it matches any course code/title in programOfferCourses
         return parsed.some(p => {
-          const pPid = p.pId ? p.pId.toLowerCase().trim() : "";
-          if (pPid) return pPid === pid;
-          
-          // Fallback to courseOfferData match
-          const pCode = p.courseCode.toLowerCase();
-          const pTitle = p.courseTitle.toLowerCase();
           return programOfferCourses.some(row => {
             const rowCode = String(row["Course Code"] || "").trim().toLowerCase();
             const rowTitle = String(row["Course Title"] || "").trim().toLowerCase();
-            return (pCode && pCode === rowCode) || (pTitle && pTitle === rowTitle);
+            return isExactCourseMatch(p, pid, rowCode, rowTitle);
           });
         });
+      });
+
+      // Count unique departmental courses that are aligned to at least one MC course
+      const alignedDepartmentalCourseKeys = new Set<string>();
+      programOfferCourses.forEach(row => {
+        const rowCode = String(row["Course Code"] || "").trim().toLowerCase();
+        const rowTitle = String(row["Course Title"] || "").trim().toLowerCase();
+        if (!rowCode && !rowTitle) return;
+
+        const key = `${rowCode}_${rowTitle}`;
+
+        const isAligned = alignedMCCourses.some(mc => {
+          const origCourse = courseData.find(c => String(c["Course Code"] || c["id"] || "").trim() === mc.code);
+          const rawAligned = origCourse 
+            ? (origCourse["Aligned Course name"] ||
+               origCourse["Aligned Course Name"] ||
+               origCourse["Aligned Course"] ||
+               origCourse["Aligned Course Title"] ||
+               origCourse["Aligned Course Code"] ||
+               origCourse["Aligned Course ID"] ||
+               origCourse["Aligned_Course"] ||
+               origCourse["Aligned Program"] ||
+               origCourse["Program Aligned"] ||
+               origCourse["Aligned_Program"] || "")
+            : "";
+
+          if (!rawAligned) return false;
+
+          const parsed = parseAlignedCourses(rawAligned, courseOfferData);
+
+          return parsed.some(p => isExactCourseMatch(p, pid, rowCode, rowTitle));
+        });
+
+        if (isAligned) {
+          alignedDepartmentalCourseKeys.add(key);
+        }
       });
 
       const runningBatchesList: any[] = [];
@@ -690,7 +732,7 @@ export default function CourseInsightsDashboard({
         programName,
         faculty,
         uniqueCoursesCount: uniqueCourseKeys.size,
-        alignedMCCoursesCount: alignedMCCourses.length,
+        alignedMCCoursesCount: alignedDepartmentalCourseKeys.size,
         runningBatches: runningBatchesList.length,
         completedBatches: completedBatchesList.length,
         upcomingBatches: upcomingBatchesList.length,
@@ -718,18 +760,7 @@ export default function CourseInsightsDashboard({
     const pidLower = selectedProgram ? selectedProgram.pid.toLowerCase().trim() : "";
 
     return mcCoursesGrouped.filter(mc => 
-      mc.parsedAligned?.some(p => {
-        const pCode = String(p.courseCode || "").trim().toLowerCase();
-        const pTitle = String(p.courseTitle || "").trim().toLowerCase();
-        const pPid = String(p.pId || "").trim().toLowerCase();
-        
-        const isPidMatch = pPid ? (pPid === pidLower) : true;
-        const isCourseMatch = 
-          (selCode && pCode === selCode) || 
-          (selTitle && pTitle === selTitle);
-          
-        return isPidMatch && isCourseMatch;
-      })
+      mc.parsedAligned?.some(p => isExactCourseMatch(p, pidLower, selCode, selTitle))
     );
   }, [programCoursesAndMCList, selectedProgramCourse, selectedProgram]);
 
@@ -996,14 +1027,19 @@ export default function CourseInsightsDashboard({
         course["Aligned_Course"] ||
         course["Aligned Program"] ||
         course["Program Aligned"] ||
-        course["Aligned_Program"] ||
-        course["P-ID"] ||
-        course["PID"] || "";
+        course["Aligned_Program"] || "";
+
+      if (!rawAligned) return;
 
       const rawItems = parseAlignedCourses(rawAligned, courseOfferData);
       const coursePids = new Set<string>();
 
       for (const item of rawItems) {
+        const targetCode = String(item.courseCode || "").trim().toLowerCase();
+        const targetTitle = String(item.courseTitle || "").trim().toLowerCase();
+
+        if (!targetCode && !targetTitle) continue;
+
         if (item.pId) {
           coursePids.add(item.pId.toLowerCase());
         } else {
@@ -1931,16 +1967,7 @@ export default function CourseInsightsDashboard({
                                                         )}>
                                                           {pc.courseTitle || "—"}
                                                         </span>
-                                                        {pc.isAligned && (
-                                                          <span className={cn(
-                                                            "text-[9px] px-1.5 py-0.5 rounded font-bold uppercase tracking-wider border",
-                                                            isSelected 
-                                                              ? "bg-amber-200/50 text-amber-800 border-amber-300/40" 
-                                                              : "bg-amber-100 text-amber-700 border-amber-200/50"
-                                                          )}>
-                                                            Aligned MC
-                                                          </span>
-                                                        )}
+
                                                       </div>
                                                     </td>
                                                     <td className="py-2 px-3 text-center font-mono font-bold text-slate-600 w-px whitespace-nowrap">
@@ -1997,13 +2024,14 @@ export default function CourseInsightsDashboard({
                                             <tr className="border-b border-slate-200 text-[10px] font-bold text-slate-500 uppercase tracking-wider">
                                               <th className="py-2 px-3 w-20">Code</th>
                                               <th className="py-2 px-3">MC Course Title</th>
+                                              <th className="py-2 px-3 w-px whitespace-nowrap text-center">Credit</th>
                                               <th className="py-2 px-3 w-px whitespace-nowrap text-right">Duration</th>
                                             </tr>
                                           </thead>
                                           <tbody className="divide-y divide-slate-100 text-slate-700">
                                             {filteredMCCourses.length === 0 ? (
                                               <tr>
-                                                <td colSpan={3} className="py-12 px-4 text-center text-slate-400 italic">
+                                                <td colSpan={4} className="py-12 px-4 text-center text-slate-400 italic">
                                                   No MC courses matched your search.
                                                 </td>
                                               </tr>
@@ -2031,7 +2059,7 @@ export default function CourseInsightsDashboard({
                                                       }
                                                     }
                                                   }}
-                                                  className="hover:bg-teal-50/40 transition-colors cursor-pointer select-none"
+                                                  className="hover:bg-teal-50/40 transition-colors cursor-pointer"
                                                   title="Ctrl+Click to view Micro-Credential Course Details"
                                                 >
                                                   <td className="py-2 px-3 font-mono text-slate-600 font-bold whitespace-nowrap">
@@ -2039,6 +2067,9 @@ export default function CourseInsightsDashboard({
                                                   </td>
                                                   <td className="py-2 px-3 font-semibold text-slate-800">
                                                     {mc.title || "—"}
+                                                  </td>
+                                                  <td className="py-2 px-3 text-center font-mono font-bold text-slate-600 w-px whitespace-nowrap">
+                                                    {mc.credit || "—"}
                                                   </td>
                                                   <td className="py-2 px-3 text-right font-medium text-slate-600 whitespace-nowrap">
                                                     {mc.duration || "—"}
@@ -2145,7 +2176,7 @@ export default function CourseInsightsDashboard({
                                                       onSelectBatch(b);
                                                     }
                                                   }}
-                                                  className="hover:bg-slate-100/70 transition-colors cursor-pointer select-none"
+                                                  className="hover:bg-slate-100/70 transition-colors cursor-pointer"
                                                   title="Ctrl + Click (or Cmd + Click) to open Batch Detail Expand view"
                                                 >
                                                   <td className="py-2.5 px-3 font-bold text-slate-900 font-mono">
@@ -2494,7 +2525,7 @@ export default function CourseInsightsDashboard({
                                               onSelectBatch(b);
                                             }
                                           }}
-                                          className="hover:bg-slate-100/70 transition-colors cursor-pointer select-none"
+                                          className="hover:bg-slate-100/70 transition-colors cursor-pointer"
                                           title="Ctrl + Click (or Cmd + Click) to open Batch Detail Expand view"
                                         >
                                           <td className="py-2.5 px-3 font-bold text-slate-900 font-mono">

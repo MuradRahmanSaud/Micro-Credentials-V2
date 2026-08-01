@@ -562,7 +562,7 @@ export default function SideEdit({
         </div>
       );
     }
-    if (["Duration", "Class", "No. of Class", "Student Size", "Batches", "Enrolled", "Enrollments", "Student", "Batch Number", "Discount", "Expenses", "Net Profit"].includes(header)) {
+    if (["Duration", "Class", "No. of Class", "Credit", "Student Size", "Batches", "Enrolled", "Enrollments", "Student", "Batch Number", "Discount", "Expenses", "Net Profit"].includes(header)) {
       return (
         <FloatingInput
           key={header}

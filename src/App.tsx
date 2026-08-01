@@ -292,7 +292,7 @@ export default function App() {
     gid: "1120624852",
     localStorageKey: "course_data",
     fallbackHeaders: [
-      "Course Code", "Course Title", "Banner", "Mode", "Duration", "Class",
+      "Course Code", "Course Title", "Banner", "Mode", "Duration", "Class", "Credit",
       "Course Fee", "Student Size", "Status", "Publication Status", "Published Status", "Published Link", "Workflow",
       "Industry Expert", "Discount",
       "Remarks", "Date", "Learning Outcome", "Industry Demand", "Target Audience", "Aligned Course name", "Proposal", "Objective"
@@ -522,7 +522,7 @@ export default function App() {
       "Banner", "Received By", "Gross Revenue", "Net Revenue", "Remarks", 
       "Proposed By", "Developed By", "Reviewed By", "Approved By", "Published By",
       "Workflow", "Expenses", "Net Profit", "Profit %", "Industry Expert", "Industry Expart",
-      "Enrolled", "Enrollments", "Expenses", "Batches",
+      "Enrolled", "Enrollments", "Expenses", "Batches", "Total Batch", "Published Link",
       "Objective", "Industry Demand", "Target Audience", "Learning Outcome", 
       "Aligned Course", "Aligned Course name", "Proposal",
       "Syllabus", "Learning Material", "Learning Materials"
@@ -538,6 +538,8 @@ export default function App() {
         norm !== "publication status" &&
         norm !== "published status" &&
         norm !== "batches" && 
+        norm !== "total batch" &&
+        norm !== "published link" &&
         norm !== "gross revenue" && 
         norm !== "net revenue" && 
         norm !== "net profit" && 
@@ -549,13 +551,13 @@ export default function App() {
     
     const pubHeaderName = courseHeaders.find(h => h.toLowerCase() === "publication status" || h.toLowerCase() === "published status") || "Publication Status";
 
-    // Find Mode or Class index to insert Activity Status and Publication Status
+    // Find Mode or Class index to insert Total Batch, Activity Status and Publication Status
     const modeIdx = baseHeaders.findIndex(h => h.toLowerCase() === "mode");
     const classIdx = baseHeaders.findIndex(h => h.toLowerCase() === "class");
     const insertIdx = modeIdx !== -1 ? modeIdx + 1 : (classIdx !== -1 ? classIdx + 1 : Math.min(baseHeaders.length, 4));
 
     const updatedHeaders = [...baseHeaders];
-    updatedHeaders.splice(insertIdx, 0, "Activity Status", pubHeaderName);
+    updatedHeaders.splice(insertIdx, 0, "Total Batch", "Activity Status", pubHeaderName);
 
     return updatedHeaders;
   }, [courseHeaders]);
@@ -608,6 +610,7 @@ export default function App() {
         "Activity Status": getCourseStatusName(course, documentsData, workflowData),
         "Status": getCourseStatusName(course, documentsData, workflowData),
         "Batches": courseBatchesCount.toString(),
+        "Total Batch": courseBatchesCount.toString(),
         "Gross Revenue": `৳ ${grossRevenue.toLocaleString()}`,
         "Net Revenue": `৳ ${netRevenue.toLocaleString()}`,
         "Net Profit": `৳ ${netProfit.toLocaleString()}`,

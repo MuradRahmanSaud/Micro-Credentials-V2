@@ -847,6 +847,7 @@ export default function MCCourseDetails({
     { key: 'Mode', icon: Globe, label: 'Mode', value: editedData?.['Mode'] || 'Hybrid' },
     { key: 'Duration', icon: Clock, label: 'Duration', value: editedData?.['Duration'] || '30' },
     { key: 'Class', icon: Calendar, label: 'Class', value: editedData?.['Class'] || editedData?.['No. of Class'] || '10' },
+    { key: 'Credit', icon: Award, label: 'Credit', value: editedData?.['Credit'] || '—' },
     { key: 'Course Fee', icon: TakaIcon, label: 'Course Fee', value: editedData?.['Course Fee'] || '2000' },
     { key: 'Student Size', icon: Users, label: 'Student Size', value: editedData?.['Student Size'] || '20-25' },
     { key: 'Status', icon: CheckCircle, label: 'Status', value: editedData?.['Status'] || 'On Hold' },
@@ -1720,6 +1721,10 @@ export default function MCCourseDetails({
                               <div className="flex items-center gap-1.5">
                                 <span className="text-[8px] font-medium uppercase tracking-widest opacity-60">Classes</span>
                                 <span className="text-[11px] font-medium uppercase">{editedData?.['Class'] || editedData?.['No. of Class'] || data?.['Class'] || data?.['No. of Class'] || '—'}</span>
+                              </div>
+                              <div className="flex items-center gap-1.5">
+                                <span className="text-[8px] font-medium uppercase tracking-widest opacity-60">Credit</span>
+                                <span className="text-[11px] font-medium uppercase">{editedData?.['Credit'] ?? data?.['Credit'] ?? '—'}</span>
                               </div>
                             </div>
                           </div>

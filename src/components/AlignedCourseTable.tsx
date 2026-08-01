@@ -321,14 +321,14 @@ export default function AlignedCourseTable({
       const row = courseOfferData[i];
       if (!row) continue;
 
-      const pId = String(row["P-ID"] || row["PID"] || row["P-Id"] || row["p-id"] || row["Sl"] || "").trim();
+      const pId = String(row["P-ID"] || row["PID"] || row["P-Id"] || row["p-id"] || row["IP-D"] || row["IPD"] || "").trim();
       const courseCode = String(row["Course Code"] || row["course code"] || "").trim();
       const courseTitle = String(row["Course Title"] || row["course title"] || "").trim();
       const credit = String(row["Credit"] || row["credit"] || "").trim();
 
       if (!courseCode && !courseTitle) continue;
 
-      const key = `${pId}_${courseCode}_${courseTitle}_${credit}`.toLowerCase();
+      const key = `${pId.toLowerCase()}|${courseCode.toLowerCase()}|${courseTitle.toLowerCase()}|${credit.toLowerCase()}`;
       if (!seen.has(key)) {
         seen.add(key);
         list.push({ pId, courseCode, courseTitle, credit });
@@ -389,12 +389,11 @@ export default function AlignedCourseTable({
       const pId = String(item.pId || "").trim().toLowerCase();
       const code = String(item.courseCode || "").trim().toLowerCase();
       const title = String(item.courseTitle || "").trim().toLowerCase();
-      if (pId) {
-        if (code) set.add(`${pId}_${code}`);
-        if (title) set.add(`${pId}_${title}`);
-      } else {
-        if (code) set.add(code);
-        if (title) set.add(title);
+      const credit = String(item.credit || "").trim().toLowerCase();
+
+      set.add(`${pId}|${code}|${title}|${credit}`);
+      if (!credit) {
+        set.add(`${pId}|${code}|${title}|nocredit`);
       }
     });
     return set;
@@ -438,49 +437,43 @@ export default function AlignedCourseTable({
 
   const isItemSelected = (opt: AlignedCourseItem) => {
     const pId = String(opt.pId || "").trim().toLowerCase();
-    const code = opt.courseCode ? opt.courseCode.toLowerCase().trim() : "";
-    const title = opt.courseTitle ? opt.courseTitle.toLowerCase().trim() : "";
-    if (pId) {
-      if (code && selectedKeys.has(`${pId}_${code}`)) return true;
-      if (title && selectedKeys.has(`${pId}_${title}`)) return true;
-    } else {
-      if (code && selectedKeys.has(code)) return true;
-      if (title && selectedKeys.has(title)) return true;
-    }
+    const code = String(opt.courseCode || "").trim().toLowerCase();
+    const title = String(opt.courseTitle || "").trim().toLowerCase();
+    const credit = String(opt.credit || "").trim().toLowerCase();
+
+    const exactKey = `${pId}|${code}|${title}|${credit}`;
+    if (selectedKeys.has(exactKey)) return true;
+    if (selectedKeys.has(`${pId}|${code}|${title}|nocredit`)) return true;
     return false;
+  };
+
+  const isExactCourseMatch = (item: AlignedCourseItem, opt: AlignedCourseItem) => {
+    const iPId = String(item.pId || "").trim().toLowerCase();
+    const iCode = String(item.courseCode || "").trim().toLowerCase();
+    const iTitle = String(item.courseTitle || "").trim().toLowerCase();
+    const iCredit = String(item.credit || "").trim().toLowerCase();
+
+    const oPId = String(opt.pId || "").trim().toLowerCase();
+    const oCode = String(opt.courseCode || "").trim().toLowerCase();
+    const oTitle = String(opt.courseTitle || "").trim().toLowerCase();
+    const oCredit = String(opt.credit || "").trim().toLowerCase();
+
+    const pIdMatch = iPId === oPId;
+    const codeMatch = iCode === oCode;
+    const titleMatch = iTitle === oTitle;
+    const creditMatch = !iCredit || !oCredit || iCredit === oCredit;
+
+    return pIdMatch && codeMatch && titleMatch && creditMatch;
   };
 
   const toggleSelectOption = (opt: AlignedCourseItem) => {
     const rawItems = parseAlignedCourses(value, courseOfferData);
-    const pId = String(opt.pId || "").trim().toLowerCase();
-    const code = opt.courseCode ? opt.courseCode.toLowerCase().trim() : "";
-    const title = opt.courseTitle ? opt.courseTitle.toLowerCase().trim() : "";
 
-    const alreadySelected = rawItems.some(
-      (item) => {
-        const iPId = String(item.pId || "").trim().toLowerCase();
-        const iCode = String(item.courseCode || "").trim().toLowerCase();
-        const iTitle = String(item.courseTitle || "").trim().toLowerCase();
-        return iPId === pId && (
-          (code && iCode === code) ||
-          (title && iTitle === title)
-        );
-      }
-    );
+    const alreadySelected = rawItems.some((item) => isExactCourseMatch(item, opt));
 
     let nextItems: AlignedCourseItem[];
     if (alreadySelected) {
-      nextItems = rawItems.filter(
-        (item) => {
-          const iPId = String(item.pId || "").trim().toLowerCase();
-          const iCode = String(item.courseCode || "").trim().toLowerCase();
-          const iTitle = String(item.courseTitle || "").trim().toLowerCase();
-          return !(iPId === pId && (
-            (code && iCode === code) ||
-            (title && iTitle === title)
-          ));
-        }
-      );
+      nextItems = rawItems.filter((item) => !isExactCourseMatch(item, opt));
     } else {
       nextItems = [...rawItems, opt];
     }
